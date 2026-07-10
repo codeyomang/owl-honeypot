@@ -1,0 +1,36 @@
+# =====================================================================
+#  systemd service for the OWL honeypot (runs it 24/7, auto-restart)
+#  Install:
+#    sudo cp owl-honeypot.service /etc/systemd/system/
+#    sudo systemctl daemon-reload
+#    sudo systemctl enable --now owl-honeypot
+#  Logs:  journalctl -u owl-honeypot -f
+#  Edit User/paths below to match your box.
+# =====================================================================
+[Unit]
+Description=OWL Honeypot (real attack logging + honeytokens)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=honeypot
+Group=honeypot
+WorkingDirectory=/opt/owl-honeypot
+Environment=HONEYPOT_PORT=8096
+Environment=HONEYPOT_HOST=127.0.0.1
+Environment=HONEYPOT_DATA=/opt/owl-honeypot/honeypot-data.json
+# real canarytokens.org secrets live here (not in git):
+EnvironmentFile=-/opt/owl-honeypot/canary.env
+ExecStart=/usr/bin/python3 /opt/owl-honeypot/server.py
+Restart=always
+RestartSec=3
+# hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/owl-honeypot
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

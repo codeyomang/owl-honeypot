@@ -1,0 +1,6 @@
+honeypot-data.json
+*.pyc
+__pycache__/
+*.log
+
+canary.env

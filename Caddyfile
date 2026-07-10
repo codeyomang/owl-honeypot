@@ -1,0 +1,38 @@
+# =====================================================================
+#  OWL Honeypot — Caddy reverse proxy (production)
+#  Fronts the Python honeypot with automatic Let's Encrypt TLS +
+#  the passthrough of the REAL client IP (so GeoIP + logs are accurate)
+#  + hardened response headers (GatesOS-grade).
+#
+#  1) Point a domain's A record at this server's public IP.
+#  2) Replace honeypot.example.com below with that domain.
+#  3) caddy run --config Caddyfile   (or use the systemd service)
+#  Caddy auto-provisions the TLS cert on first request.
+# =====================================================================
+
+honeypot.example.com {
+	encode zstd gzip
+
+	# forward everything to the honeypot app on localhost:8096
+	reverse_proxy 127.0.0.1:8096 {
+		# pass the real visitor IP so the honeypot logs/geo are accurate
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+		-Server
+	}
+}
+
+# --- Local/no-domain testing (http://<ip> only, no TLS): ---
+# :80 {
+# 	reverse_proxy 127.0.0.1:8096 {
+# 		header_up X-Real-IP {remote_host}
+# 	}
+# }

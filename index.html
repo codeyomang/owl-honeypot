@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🕸 OWL Honeypot — Live Attack Feed</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%F0%9F%95%B8%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<canvas id="matrix" aria-hidden="true"></canvas>
+<canvas id="grid" aria-hidden="true"></canvas>
+<div id="scanlines" aria-hidden="true"></div>
+
+<header class="bar">
+  <div class="topline">
+    <div class="brand">⬢ <b>OWL</b><span class="os">HONEYPOT</span>
+      <span class="live" id="live">● LIVE</span></div>
+    <div class="hud">
+      <span class="h">EPS <b id="eps">0</b></span>
+      <span class="h">THREATS <b id="hthreats">0</b></span>
+      <span class="h">SOURCES <b id="hsources">0</b></span>
+      <span class="h">FEEDS <b id="hfeeds">--</b></span>
+      <span class="h tl" id="threatlvl">THREAT LEVEL —</span>
+      <span class="h clk" id="clock">--:--:--</span>
+    </div>
+  </div>
+</header>
+
+<section class="strip">
+  <div class="chip"><b id="total">0</b> hits</div>
+  <div class="chip crit"><b id="attacks">0</b> attacks</div>
+  <div class="chip"><b id="sources">0</b> nets</div>
+  <div class="chip"><b id="countries">0</b> countries</div>
+  <div class="chip"><b id="uptime">0s</b> up</div>
+  <div class="stripsev">
+    <span class="sevlbl">SEV</span>
+    <div class="sevmix" id="sevmix">
+      <div class="seg high" id="segHigh" title="high"></div>
+      <div class="seg med"  id="segMed"  title="medium"></div>
+      <div class="seg low"  id="segLow"  title="low"></div>
+    </div>
+    <span class="sevn"><i class="dot high"></i><b id="nHigh">0</b> <i class="dot med"></i><b id="nMed">0</b> <i class="dot low"></i><b id="nLow">0</b></span>
+    <span class="hint" id="sevtotal"></span>
+  </div>
+</section>
+
+<main class="dash">
+  <!-- LEFT: map + console -->
+  <div class="col colL">
+    <div class="panel mappanel">
+      <div class="ph">▣ global attack globe <span class="hint" id="mapcount">0 sources</span>
+        <span class="viewtoggle"><button id="vGlobe" class="on">globe</button><button id="vMap">map</button></span></div>
+      <div class="mapwrap">
+        <canvas id="globe" class="globecv" aria-label="3D attack globe"></canvas>
+        <svg class="worldsvg" id="worldsvg" viewBox="0 0 360 180" preserveAspectRatio="xMidYMid meet" aria-label="attack sources" style="display:none">
+          <rect x="0" y="0" width="360" height="180" fill="none"/>
+          <g id="landmass" opacity="0.28"></g>
+          <g id="dots"></g>
+        </svg>
+      </div>
+    </div>
+    <div class="panel term-panel">
+      <div class="ph">▣ console <span class="hint">./watch --live</span></div>
+      <div class="term" id="term" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- CENTER: live feed -->
+  <div class="col colC">
+    <div class="panel feed">
+      <div class="ph">▣ live feed <span class="hint">newest first</span></div>
+      <div class="rows" id="rows"><div class="empty">waiting for traffic… (probes usually arrive within minutes of going public)</div></div>
+    </div>
+    <div class="panel suri">
+      <div class="ph">▣ suricata / IDS <span class="hint" id="suricount">0 alerts</span>
+        <span class="suri-actions"><a href="/api/eve" download="eve.json">⬇ eve</a><a href="/owl-honeypot.rules" download>⬇ rules</a></span></div>
+      <div class="everows" id="everows"><div class="empty">no alerts yet</div></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: intel panels -->
+  <div class="col colR">
+    <div class="panel token">
+      <div class="ph">🍯 honeytokens <span class="hint">canary bait</span></div>
+      <div class="tokrows" id="tokrows"><div class="empty">no bait triggered — decoy creds in /.env &amp; /admin</div></div>
+    </div>
+    <div class="panel">
+      <div class="ph">🌍 top countries</div>
+      <ul class="toplist" id="geolist"><li class="empty">none yet</li></ul>
+    </div>
+    <div class="panel">
+      <div class="ph">▣ top attack types</div>
+      <ul class="toplist" id="toptypes"><li class="empty">none yet</li></ul>
+    </div>
+    <div class="panel">
+      <div class="ph">▣ system</div>
+      <ul class="procs">
+        <li><span>[987]</span> sshd</li><li><span>[1142]</span> caddy</li>
+        <li><span>[1190]</span> honeyd</li><li><span>[1245]</span> cowrie</li>
+      </ul>
+      <div class="meters">
+        <div class="meter"><label>load</label><div class="mbar"><i id="mload"></i></div><span class="mv" id="vload">0.00</span></div>
+        <div class="meter"><label>mem</label><div class="mbar"><i id="mmem"></i></div><span class="mv" id="vmem">--</span></div>
+        <div class="meter"><label>net</label><div class="mbar"><i id="mnet"></i></div><span class="mv" id="vnet">--</span></div>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
