@@ -51,7 +51,7 @@
     $("#hthreats").textContent = st.attacks.toLocaleString();
     $("#hsources").textContent = st.sources.toLocaleString();
     $("#hfeeds").textContent = st.feeds != null ? st.feeds : "--";
-    if (st.total > 0) $("#sessline").textContent = "session resolved · monitoring the wire…";
+    if (st.total > 0 && $("#sessline")) $("#sessline").textContent = "session resolved · monitoring the wire…";
     // threat level from recent high-sev volume
     const sv = st.sev || { high: 0, med: 0, low: 0 };
     const tl = $("#threatlvl");

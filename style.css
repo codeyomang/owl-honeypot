@@ -1,10 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=VT323&display=swap');
 :root{
   --bg:#04110a; --panel:rgba(255,255,255,.02); --line:rgba(52,255,102,.22); --fg:#c9ffd5; --dim:#5f8a6e;
   --grn:#34ff66; --red:#ff4d5e; --amber:#ffb020; --blue:#38bdf8;
   --mono:"JetBrains Mono","IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=VT323&display=swap');
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--fg);font-family:var(--mono);font-size:13px;
   background-image:radial-gradient(120% 80% at 50% -10%,#062616 0%,var(--bg) 55%);
