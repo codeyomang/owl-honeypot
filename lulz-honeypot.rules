@@ -1,0 +1,35 @@
+# =====================================================================
+# Lulz Honeypot — Suricata-format ruleset
+# These are REAL Suricata rules (http keyword syntax). The honeypot's
+# Python engine mirrors these SIDs/classtypes/severities, and this file
+# can be loaded into an actual Suricata sensor unchanged.
+#
+# SID range: 9000000+ (local rule space). classtype/severity follow
+# Suricata/ET conventions (severity 1=high, 2=med, 3=low).
+# =====================================================================
+
+alert http any any -> any any (msg:"LULZ ENV file access attempt (.env secrets)"; flow:established,to_server; http.uri; content:"/.env"; nocase; classtype:web-application-attack; sid:9000001; rev:1; metadata:severity high;)
+alert http any any -> any any (msg:"LULZ GIT repository exposure probe"; flow:established,to_server; http.uri; content:"/.git"; nocase; classtype:attempted-recon; sid:9000002; rev:1; metadata:severity high;)
+alert http any any -> any any (msg:"LULZ WordPress admin/login probe"; flow:established,to_server; http.uri; pcre:"/\/wp-(admin|login)/i"; classtype:attempted-recon; sid:9000003; rev:1; metadata:severity medium;)
+alert http any any -> any any (msg:"LULZ Database admin panel probe (phpMyAdmin/Adminer)"; flow:established,to_server; http.uri; pcre:"/\/(phpmyadmin|pma|adminer)/i"; classtype:attempted-recon; sid:9000004; rev:1; metadata:severity medium;)
+alert http any any -> any any (msg:"LULZ Directory traversal attempt"; flow:established,to_server; http.uri; pcre:"/(\.\.\/|%2e%2e)/i"; classtype:web-application-attack; sid:9000005; rev:1; metadata:severity high;)
+alert http any any -> any any (msg:"LULZ SQL injection attempt"; flow:established,to_server; http.uri; pcre:"/(union\s+select|or\s+1=1|sleep\()/i"; classtype:web-application-attack; sid:9000006; rev:1; metadata:severity high;)
+alert http any any -> any any (msg:"LULZ Cross-site scripting (XSS) attempt"; flow:established,to_server; http.uri; pcre:"/(<script|onerror=|javascript:)/i"; classtype:web-application-attack; sid:9000007; rev:1; metadata:severity high;)
+alert http any any -> any any (msg:"LULZ RCE / web shell probe"; flow:established,to_server; http.uri; pcre:"/\/(cgi-bin|boaform|shell|cmd|eval)/i"; classtype:web-application-attack; sid:9000008; rev:1; metadata:severity high;)
+alert http any any -> any any (msg:"LULZ Sensitive file access probe (keys/backup/config)"; flow:established,to_server; http.uri; pcre:"/\/(config|backup|\.aws|\.ssh|id_rsa)/i"; classtype:web-application-attack; sid:9000009; rev:1; metadata:severity high;)
+alert http any any -> any any (msg:"LULZ Known scanner tool User-Agent"; flow:established,to_server; http.user_agent; pcre:"/(sqlmap|nikto|nmap|masscan|zgrab|nuclei|hydra)/i"; classtype:attempted-recon; sid:9000010; rev:1; metadata:severity medium;)
+alert http any any -> any any (msg:"LULZ App-framework probe (actuator/solr/struts/jenkins)"; flow:established,to_server; http.uri; pcre:"/\/(actuator|solr|struts|jenkins)/i"; classtype:attempted-recon; sid:9000011; rev:1; metadata:severity medium;)
+alert http any any -> any any (msg:"LULZ Generic admin login probe"; flow:established,to_server; http.uri; pcre:"/\/(login|admin|manager|owa)\b/i"; classtype:attempted-recon; sid:9000012; rev:1; metadata:severity low;)
+
+# --- Threshold / brute-force (detection_filter): 15 req / 60s from one source ---
+alert http any any -> any any (msg:"LULZ Threshold - high request rate from single source (scan/brute)"; flow:established,to_server; detection_filter:track by_src, count 15, seconds 60; classtype:attempted-dos; sid:9000050; rev:1; metadata:severity high;)
+
+# --- Honeytoken / canary: attacker REPLAYS a bait credential we planted ---
+# (set the content to your issued canary token; here it's the decoy AWS key prefix)
+# NOTE: set the content: below to YOUR canarytokens.org AWS key id at deploy time.
+alert http any any -> any any (msg:"LULZ HONEYTOKEN triggered - canarytokens.org AWS key used"; flow:established,to_server; content:"AKIA"; classtype:credential-theft; sid:9000060; rev:1; metadata:severity critical;)
+alert http any any -> any any (msg:"LULZ HONEYTOKEN triggered - bait API key used"; flow:established,to_server; content:"lulz_live_"; classtype:credential-theft; sid:9000061; rev:1; metadata:severity critical;)
+
+# --- SSH honeypot (Cowrie) events, shipped via /api/ingest ---
+alert ssh any any -> any 22 (msg:"LULZ SSH honeypot - brute-force / login attempt"; classtype:attempted-admin; sid:9000070; rev:1; metadata:severity medium;)
+alert tcp any any -> any 23 (msg:"LULZ Telnet honeypot - brute-force / login attempt"; classtype:attempted-admin; sid:9000071; rev:1; metadata:severity medium;)

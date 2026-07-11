@@ -9,9 +9,9 @@ endpoints seeded with **live Canarytokens** that email you when tripped.
 ```
 server.py             # the honeypot app (Python stdlib only, no pip deps)
 index.html style.css app.js   # the SOC-console UI
-owl-honeypot.rules    # Suricata-format ruleset (loadable into real Suricata)
+lulz-honeypot.rules    # Suricata-format ruleset (loadable into real Suricata)
 Caddyfile             # reverse proxy: auto-TLS + real-IP passthrough + headers
-owl-honeypot.service  # systemd unit (24/7, auto-restart, sandboxed)
+lulz-honeypot.service  # systemd unit (24/7, auto-restart, sandboxed)
 setup.sh              # one-shot installer for Debian/Ubuntu
 ```
 
@@ -30,7 +30,7 @@ On a fresh Debian/Ubuntu box, copy this folder over, then:
 cd honeypot-site
 sudo DOMAIN=honeypot.yourdomain.com ./setup.sh
 ```
-That installs Python + Caddy, drops the app in `/opt/owl-honeypot`, starts the
+That installs Python + Caddy, drops the app in `/opt/lulz-honeypot`, starts the
 systemd service, and provisions TLS. Visit **https://honeypot.yourdomain.com**.
 
 ---
@@ -51,10 +51,10 @@ Key env vars:
 
 ## Run 24/7 (systemd)
 ```bash
-sudo cp owl-honeypot.service /etc/systemd/system/
+sudo cp lulz-honeypot.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now owl-honeypot
-journalctl -u owl-honeypot -f          # live logs
+sudo systemctl enable --now lulz-honeypot
+journalctl -u lulz-honeypot -f          # live logs
 ```
 
 ## Reverse proxy WITHOUT the installer
@@ -86,12 +86,12 @@ shipped into the same dashboard feed + globe.
 # 1) MOVE YOUR REAL SSH OFF :22 FIRST or you'll lock yourself out!
 #    edit /etc/ssh/sshd_config -> Port 2222 ; systemctl restart ssh
 #    then re-run harden.sh so ufw allows your new SSH port.
-# 2) set INGEST_TOKEN in /opt/owl-honeypot/canary.env (openssl rand -hex 24)
+# 2) set INGEST_TOKEN in /opt/lulz-honeypot/canary.env (openssl rand -hex 24)
 #    -> same value the dashboard reads.
 # 3) deploy Cowrie (needs docker):
 cd ssh-honeypot && docker compose up -d
 # 4) ship its events to the dashboard:
-sudo cp ship-cowrie.py /opt/owl-honeypot/ssh-honeypot/ 2>/dev/null || true
+sudo cp ship-cowrie.py /opt/lulz-honeypot/ssh-honeypot/ 2>/dev/null || true
 sudo cp cowrie-shipper.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now cowrie-shipper
 ```
@@ -101,7 +101,7 @@ SSH attacks now appear in the live feed (method=SSH), globe, and severity mix.
 > real admin SSH MUST be on a different port, key-only, before you do this.
 
 ## Feeding real Suricata (optional)
-`owl-honeypot.rules` is valid Suricata syntax — load it on a real Suricata
+`lulz-honeypot.rules` is valid Suricata syntax — load it on a real Suricata
 sensor to get the same detections at the packet level.
 
 ## Security notes

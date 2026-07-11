@@ -1,4 +1,4 @@
-/* OWL Honeypot UI — polls /api/feed and renders live hits. No deps. */
+/* LULZ Honeypot UI — polls /api/feed and renders live hits. No deps. */
 (() => {
   "use strict";
   const $ = (s) => document.querySelector(s);

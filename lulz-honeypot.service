@@ -1,10 +1,10 @@
 # =====================================================================
-#  systemd service for the OWL honeypot (runs it 24/7, auto-restart)
+#  systemd service for the LULZ honeypot (runs it 24/7, auto-restart)
 #  Install:
-#    sudo cp owl-honeypot.service /etc/systemd/system/
+#    sudo cp lulz-honeypot.service /etc/systemd/system/
 #    sudo systemctl daemon-reload
-#    sudo systemctl enable --now owl-honeypot
-#  Logs:  journalctl -u owl-honeypot -f
+#    sudo systemctl enable --now lulz-honeypot
+#  Logs:  journalctl -u lulz-honeypot -f
 #  Edit User/paths below to match your box.
 # =====================================================================
 [Unit]
@@ -16,20 +16,20 @@ Wants=network-online.target
 Type=simple
 User=honeypot
 Group=honeypot
-WorkingDirectory=/opt/owl-honeypot
+WorkingDirectory=/opt/lulz-honeypot
 Environment=HONEYPOT_PORT=8096
 Environment=HONEYPOT_HOST=127.0.0.1
-Environment=HONEYPOT_DATA=/opt/owl-honeypot/honeypot-data.json
+Environment=HONEYPOT_DATA=/opt/lulz-honeypot/honeypot-data.json
 # real canarytokens.org secrets live here (not in git):
-EnvironmentFile=-/opt/owl-honeypot/canary.env
-ExecStart=/usr/bin/python3 /opt/owl-honeypot/server.py
+EnvironmentFile=-/opt/lulz-honeypot/canary.env
+ExecStart=/usr/bin/python3 /opt/lulz-honeypot/server.py
 Restart=always
 RestartSec=3
 # hardening
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ReadWritePaths=/opt/owl-honeypot
+ReadWritePaths=/opt/lulz-honeypot
 ProtectHome=true
 
 [Install]

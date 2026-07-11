@@ -12,9 +12,9 @@
 #    BRANCH   default: main
 # =====================================================================
 set -euo pipefail
-REPO="${REPO:-https://github.com/codeyomang/owl-honeypot.git}"   # <-- set after first push
+REPO="${REPO:-https://github.com/codeyomang/lulz-honeypot.git}"   # <-- set after first push
 BRANCH="${BRANCH:-main}"
-DEST="${DEST:-/opt/owl-honeypot-src}"
+DEST="${DEST:-/opt/lulz-honeypot-src}"
 
 [ "$(id -u)" -eq 0 ] || { echo "run as root (sudo)"; exit 1; }
 command -v git >/dev/null || { apt-get update -y && apt-get install -y git; }

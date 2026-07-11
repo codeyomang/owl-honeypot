@@ -27,7 +27,7 @@ GEOIP_ON = os.environ.get("GEOIP", "on").lower() != "off"
 
 # ---- Suricata-style signatures ----
 # each: (regex, msg, sev_word, sid, classtype, severity_num)  where 1=high 2=med 3=low
-# SIDs/classtypes mirror owl-honeypot.rules (loadable into real Suricata).
+# SIDs/classtypes mirror lulz-honeypot.rules (loadable into real Suricata).
 SIGS = [
     (re.compile(r"/\.env\b", re.I),                   "Env-file / secret theft", "high", 9000001, "web-application-attack", 1),
     (re.compile(r"/\.git", re.I),                     "Git repo exposure probe", "high", 9000002, "attempted-recon", 1),
@@ -88,7 +88,7 @@ CANARY_DNS        = os.environ.get("CANARY_DNS", "placeholder.canarytokens.com")
 INGEST_TOKEN = os.environ.get("INGEST_TOKEN", "")   # set in canary.env to enable
 HONEYTOKENS = {
     "aws_key":  CANARY_AWS_KEY,
-    "api_key":  "owl_live_" + secrets.token_hex(16),
+    "api_key":  "lulz_live_" + secrets.token_hex(16),
     "session":  secrets.token_hex(24),
 }
 HONEYTOKEN_HITS = deque(maxlen=100)
@@ -191,7 +191,7 @@ class H(BaseHTTPRequestHandler):
                     "geoip": {"country_name": g["country"], "country_code": g["cc"]},
                     "http": {"url": "(rate)", "http_method": "*", "http_user_agent": ""},
                     "alert": {"action": "allowed", "signature_id": 9000050, "rev": 1,
-                        "signature": f"OWL Threshold: {recent} req/{THRESH_WINDOW}s from one source",
+                        "signature": f"LULZ Threshold: {recent} req/{THRESH_WINDOW}s from one source",
                         "category": "attempted-dos", "severity": 1},
                 })
                 HITS.appendleft({"t": now.strftime("%H:%M:%S"), "ip": ip,
@@ -231,7 +231,7 @@ class H(BaseHTTPRequestHandler):
                     "geoip": {"country_name": geo["country"], "country_code": geo["cc"]},
                     "http": {"url": path[:200], "http_method": self.command, "http_user_agent": ua[:200]},
                     "alert": {"action": "allowed", "signature_id": 9000060, "rev": 1,
-                        "signature": f"OWL HONEYTOKEN triggered ({tok}) - attacker used bait credential",
+                        "signature": f"LULZ HONEYTOKEN triggered ({tok}) - attacker used bait credential",
                         "category": "credential-theft", "severity": 1},
                 })
         hit = {
@@ -270,7 +270,7 @@ class H(BaseHTTPRequestHandler):
                     "alert": {
                         "action": "allowed",
                         "signature_id": sig["sid"], "rev": 1,
-                        "signature": "OWL " + sig["label"],
+                        "signature": "LULZ " + sig["label"],
                         "category": sig["classtype"],
                         "severity": sig["sevnum"],
                     },
@@ -325,8 +325,8 @@ class H(BaseHTTPRequestHandler):
             with LOCK:
                 lines = "\n".join(json.dumps(e) for e in reversed(EVE))
             return self._send(200, lines or "", "application/x-ndjson")
-        if self.path == "/owl-honeypot.rules":
-            return self._send(200, (HERE / "owl-honeypot.rules").read_bytes(), "text/plain")
+        if self.path == "/lulz-honeypot.rules":
+            return self._send(200, (HERE / "lulz-honeypot.rules").read_bytes(), "text/plain")
         if self.path in ("/", "/index.html"):
             return self._send(200, (HERE / "index.html").read_bytes())
         for name, ctype in (("app.js", "application/javascript"), ("style.css", "text/css")):
@@ -337,7 +337,7 @@ class H(BaseHTTPRequestHandler):
             self._record()
             # decoy .env seeded with the REAL AWS canary token
             body = ("APP_ENV=production\nAPP_DEBUG=false\nDB_CONNECTION=mysql\n"
-                    f"DB_HOST={CANARY_DNS}\nDB_DATABASE=owl_prod\nDB_USERNAME=owl_app\n"
+                    f"DB_HOST={CANARY_DNS}\nDB_DATABASE=lulz_prod\nDB_USERNAME=lulz_app\n"
                     f"AWS_ACCESS_KEY_ID={CANARY_AWS_KEY}\n"
                     f"AWS_SECRET_ACCESS_KEY={CANARY_AWS_SECRET}\n"
                     "AWS_DEFAULT_REGION=us-east-2\n"
@@ -364,23 +364,23 @@ class H(BaseHTTPRequestHandler):
             self._record()
             return self._send(200,
                 "[core]\n\trepositoryformatversion = 0\n\tbare = false\n"
-                "[remote \"origin\"]\n\turl = https://github.com/owl-internal/prod-app.git\n"
+                "[remote \"origin\"]\n\turl = https://github.com/lulz-internal/prod-app.git\n"
                 f"\tfetch = +refs/heads/*:refs/remotes/origin/*\n", "text/plain")
         # fake phpinfo()
         if p.endswith("/phpinfo.php") or p.endswith("/info.php"):
             self._record()
             return self._send(200, "<h1>PHP Version 7.4.33</h1><table>"
-                "<tr><td>System</td><td>Linux owl-prod 5.15.0</td></tr>"
+                "<tr><td>System</td><td>Linux lulz-prod 5.15.0</td></tr>"
                 "<tr><td>Server API</td><td>FPM/FastCGI</td></tr>"
-                "<tr><td>DOCUMENT_ROOT</td><td>/var/www/owl</td></tr></table>")
+                "<tr><td>DOCUMENT_ROOT</td><td>/var/www/lulz</td></tr></table>")
         # fake database backup (seed DNS canary as host)
         if p.endswith(".sql") or p.endswith(".sql.gz") or "/backup" in p or "/dump" in p:
             self._record()
             return self._send(200,
                 "-- MySQL dump 10.13  Distrib 8.0\n"
-                f"-- Host: {CANARY_DNS}    Database: owl_prod\n"
+                f"-- Host: {CANARY_DNS}    Database: lulz_prod\n"
                 "CREATE TABLE `users` (`id` int, `email` varchar(255), `pass_hash` varchar(255));\n"
-                "INSERT INTO `users` VALUES (1,'admin@owlautocs.com','$2y$10$abcdef...');\n", "text/plain")
+                "INSERT INTO `users` VALUES (1,'admin@lulzautocs.com','$2y$10$abcdef...');\n", "text/plain")
         # fake AWS credentials file (real canary)
         if p.endswith("/.aws/credentials") or p.endswith("/credentials"):
             self._record()
@@ -407,7 +407,7 @@ class H(BaseHTTPRequestHandler):
             self._record()
             return self._send(200, json.dumps({
                 "openapi": "3.0.0",
-                "info": {"title": "OWL Internal API", "version": "1.0"},
+                "info": {"title": "LULZ Internal API", "version": "1.0"},
                 "servers": [{"url": "https://" + CANARY_DNS}],
                 "paths": {"/users": {"get": {"summary": "list users"}},
                           "/admin/token": {"post": {"summary": "issue admin token"}}},
@@ -522,7 +522,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, _graceful)   # systemd/pkill stop -> save
     signal.signal(signal.SIGINT, _graceful)    # ctrl-c -> save
     threading.Thread(target=_autosave, daemon=True).start()
-    print(f"[*] OWL honeypot listening on {HOST}:{PORT}  (UI: /  feed: /api/feed)")
+    print(f"[*] LULZ honeypot listening on {HOST}:{PORT}  (UI: /  feed: /api/feed)")
     print(f"[*] geoip={'on' if GEOIP_ON else 'off'}  data={DATA_FILE}")
     try:
         ThreadingHTTPServer((HOST, PORT), H).serve_forever()

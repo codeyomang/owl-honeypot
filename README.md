@@ -14,11 +14,11 @@ Pure Python stdlib — **no pip dependencies**. GatesOS-style terminal UI.
 On a fresh Debian/Ubuntu VPS with a domain pointed at it:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/codeyomang/owl-honeypot/main/install.sh \
+curl -fsSL https://raw.githubusercontent.com/codeyomang/lulz-honeypot/main/install.sh \
   | sudo DOMAIN=honeypot.yourdomain.com bash
 ```
 
-That installs Python + Caddy, deploys the app under `/opt/owl-honeypot`, starts
+That installs Python + Caddy, deploys the app under `/opt/lulz-honeypot`, starts
 the systemd service (24/7, auto-restart), and provisions HTTPS automatically.
 Then visit `https://honeypot.yourdomain.com`.
 

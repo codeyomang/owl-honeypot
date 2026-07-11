@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =====================================================================
 #  Lulz Honeypot — one-shot installer for a fresh Debian/Ubuntu box.
-#  Installs the app to /opt/owl-honeypot, sets up the systemd service,
+#  Installs the app to /opt/lulz-honeypot, sets up the systemd service,
 #  installs Caddy, and wires TLS for your domain.
 #
 #  Usage:
@@ -10,7 +10,7 @@
 # =====================================================================
 set -euo pipefail
 DOMAIN="${DOMAIN:-}"
-APP=/opt/owl-honeypot
+APP=/opt/lulz-honeypot
 SRC="$(cd "$(dirname "$0")" && pwd)"
 
 [ "$(id -u)" -eq 0 ] || { echo "run with sudo"; exit 1; }
@@ -27,7 +27,7 @@ fi
 echo "[*] 2/6 app user + files -> $APP"
 id honeypot &>/dev/null || useradd --system --home "$APP" --shell /usr/sbin/nologin honeypot
 mkdir -p "$APP"
-cp "$SRC"/server.py "$SRC"/index.html "$SRC"/style.css "$SRC"/app.js "$SRC"/owl-honeypot.rules "$APP"/
+cp "$SRC"/server.py "$SRC"/index.html "$SRC"/style.css "$SRC"/app.js "$SRC"/lulz-honeypot.rules "$APP"/
 # canary secrets: copy canary.env if present (never in git), else drop the example
 if [ -f "$SRC"/canary.env ]; then cp "$SRC"/canary.env "$APP"/canary.env; chmod 600 "$APP"/canary.env
 else cp "$SRC"/canary.env.example "$APP"/canary.env.example
@@ -35,9 +35,9 @@ else cp "$SRC"/canary.env.example "$APP"/canary.env.example
 chown -R honeypot:honeypot "$APP"
 
 echo "[*] 3/6 systemd service"
-cp "$SRC"/owl-honeypot.service /etc/systemd/system/
+cp "$SRC"/lulz-honeypot.service /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable --now owl-honeypot
+systemctl enable --now lulz-honeypot
 
 echo "[*] 4/6 Caddy config"
 if [ -n "$DOMAIN" ]; then
@@ -53,8 +53,8 @@ echo "[*] 5/6 firewall (allow 80/443 if ufw present)"
 if command -v ufw >/dev/null; then ufw allow 80,443/tcp || true; fi
 
 echo "[*] 6/6 done."
-systemctl --no-pager status owl-honeypot | head -5
+systemctl --no-pager status lulz-honeypot | head -5
 echo
 echo "  Honeypot:  http://127.0.0.1:8096  (behind Caddy at your domain)"
-echo "  Logs:      journalctl -u owl-honeypot -f"
+echo "  Logs:      journalctl -u lulz-honeypot -f"
 echo "  Data:      $APP/honeypot-data.json (persists across restarts)"
