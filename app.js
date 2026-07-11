@@ -70,6 +70,19 @@
     $("#segMed").style.width  = pct(M) + "%";
     $("#segLow").style.width  = pct(L) + "%";
 
+    // DDoS / flood banner
+    const bar = $("#ddosbar"), dd = d.ddos;
+    if (bar && dd) {
+      if (dd.level === "normal") {
+        bar.hidden = true; bar.className = "ddosbar";
+      } else {
+        bar.hidden = false;
+        bar.className = "ddosbar " + dd.level;
+        const icon = dd.level === "under_attack" ? "🚨 UNDER ATTACK" : "⚠ ELEVATED TRAFFIC";
+        bar.textContent = `${icon} — ${dd.note || (dd.eps + " req/s")}`;
+      }
+    }
+
     // geo panel
     const geo = d.geo || [];
     $("#geolist").innerHTML = geo.length

@@ -93,6 +93,59 @@ HONEYTOKENS = {
 }
 HONEYTOKEN_HITS = deque(maxlen=100)
 
+# ---- App-layer DDoS / flood detection ----
+# NOTE: volumetric (network) DDoS must be handled upstream (Cloudflare /
+# provider / the Caddy rate-limit). This detects APP-LAYER floods and raises
+# an 'under attack' state on the dashboard.
+REQ_TIMES = deque(maxlen=5000)          # global request timestamps (for EPS)
+SRC_WINDOW = defaultdict(lambda: deque(maxlen=400))  # per-ip timestamps
+DDOS = {
+    "level": "normal",     # normal | elevated | under_attack
+    "eps": 0.0,            # global requests/sec (10s window)
+    "flood_sources": [],   # [(ip, rate_per_min), ...] single-source floods
+    "distinct_sources_1m": 0,
+    "note": "",
+    "since": 0,
+}
+EPS_ATTACK = float(os.environ.get("DDOS_EPS", 25))      # global req/s -> flood
+SRC_FLOOD  = int(os.environ.get("DDOS_SRC_RPM", 300))   # one IP req/min -> flood
+DISTRIB_SRC = int(os.environ.get("DDOS_DISTINCT", 40))  # distinct IPs/min at high eps
+
+def ddos_check(ip):
+    now = time.time()
+    REQ_TIMES.append(now)
+    SRC_WINDOW[ip].append(now)
+    eps = sum(1 for t in REQ_TIMES if now - t <= 10) / 10.0
+    # per-source rate (req in last 60s)
+    floods = []
+    for s, dq in list(SRC_WINDOW.items()):
+        rpm = sum(1 for t in dq if now - t <= 60)
+        if rpm >= SRC_FLOOD:
+            floods.append((s, rpm))
+        # prune idle sources to bound memory
+        if dq and now - dq[-1] > 300:
+            SRC_WINDOW.pop(s, None)
+    distinct = sum(1 for dq in SRC_WINDOW.values() if dq and now - dq[-1] <= 60)
+    floods.sort(key=lambda x: -x[1])
+    # decide level
+    level, note = "normal", ""
+    if eps >= EPS_ATTACK and distinct >= DISTRIB_SRC:
+        level, note = "under_attack", f"distributed flood: {int(eps)} req/s from {distinct} sources"
+    elif floods:
+        level, note = "under_attack", f"HTTP flood: {floods[0][0]} @ {floods[0][1]} req/min"
+    elif eps >= EPS_ATTACK:
+        level, note = "under_attack", f"traffic spike: {int(eps)} req/s"
+    elif eps >= EPS_ATTACK * 0.5:
+        level, note = "elevated", f"rising traffic: {int(eps)} req/s"
+    with LOCK:
+        if level != "normal" and DDOS["level"] == "normal":
+            DDOS["since"] = int(now)
+        DDOS["level"] = level
+        DDOS["eps"] = round(eps, 1)
+        DDOS["flood_sources"] = floods[:5]
+        DDOS["distinct_sources_1m"] = distinct
+        DDOS["note"] = note
+
 
 def classify(path, ua):
     hay = path + " " + ua
@@ -225,6 +278,7 @@ class H(BaseHTTPRequestHandler):
             octet = ".".join(ip.split(".")[:3]) + ".0/24" if "." in ip else ip
             BY_NET[octet] += 1
         self._maybe_threshold(ip, now)
+        ddos_check(ip)
         return hit
 
     def _send(self, code, body, ctype="text/html; charset=utf-8"):
@@ -261,6 +315,7 @@ class H(BaseHTTPRequestHandler):
                     "geo": BY_GEO.most_common(8),
                     "classtypes": BY_CLASS.most_common(6),
                     "honeytokens": list(HONEYTOKEN_HITS)[:10],
+                    "ddos": dict(DDOS),
                     "eve": list(EVE)[:20],
                     "hits": list(HITS)[:60],
                 }
