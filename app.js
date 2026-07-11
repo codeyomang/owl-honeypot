@@ -280,6 +280,13 @@
     ID:[-2,118],AU:[-25,134],ZA:[-29,24],NG:[9,8],EG:[27,30],IR:[32,53],
     TR:[39,35],PL:[52,19],RO:[46,25],SE:[62,15],ES:[40,-4],IT:[42,12],
     BD:[24,90],PK:[30,69],HK:[22,114],TW:[24,121],TH:[15,101],
+    CH:[47,8],MA:[32,-6],NL:[52,5],LU:[50,6],BE:[51,4],AT:[47,14],
+    CZ:[50,15],DK:[56,10],FI:[64,26],NO:[62,10],PT:[39,-8],IE:[53,-8],
+    GR:[39,22],BG:[43,25],HU:[47,19],RS:[44,21],SK:[49,19],LT:[55,24],
+    LV:[57,25],EE:[59,26],MD:[47,29],CA:[56,-106],CL:[-33,-71],CO:[4,-73],
+    PE:[-10,-76],VE:[7,-66],SA:[24,45],AE:[24,54],IL:[31,35],KZ:[48,68],
+    PH:[13,122],MY:[4,102],NP:[28,84],LK:[7,81],KE:[0,38],DZ:[28,3],
+    TN:[34,9],NG:[9,8],GH:[8,-1],CM:[6,12],CI:[8,-5],
   };
   const gcv = $("#globe"), gx = gcv && gcv.getContext("2d");
   let gW, gH, gR, rot = 0, activePts = [];
@@ -287,8 +294,11 @@
     if(!gcv) return;
     const box = gcv.parentElement.getBoundingClientRect();
     const dpr = Math.min(devicePixelRatio||1, 2);
-    gW = gcv.width = Math.max(box.width-24,120)*dpr;
-    gH = gcv.height = Math.max(box.height-24,120)*dpr;
+    // fall back to sane dims if the flex panel hasn't laid out yet (height 0)
+    const w = box.width  > 20 ? box.width  - 24 : 300;
+    const h = box.height > 20 ? box.height - 24 : 240;
+    gW = gcv.width  = Math.max(w, 120) * dpr;
+    gH = gcv.height = Math.max(h, 120) * dpr;
     gcv.style.width = (gW/dpr)+"px"; gcv.style.height=(gH/dpr)+"px";
     gR = Math.min(gW,gH)*0.40;
   }
@@ -367,7 +377,10 @@
 
   // hook both map + globe into the render wrapper
   const _r2 = render;
-  render = function(d){ _r2(d); renderMap(d); updateGlobePts(d); };
+  render = function(d){ _r2(d); renderMap(d); updateGlobePts(d);
+    // self-correct globe size if the panel wasn't laid out at first paint
+    if (gcv && (!gH || gcv.height < 60)) gsize();
+  };
 
   // re-poll immediately when the tab regains focus (backgrounded tabs throttle timers)
   document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
