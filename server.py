@@ -362,26 +362,30 @@ class H(BaseHTTPRequestHandler):
         self._send(404, "<html><body><h1>404 Not Found</h1></body></html>")
 
     def _ingest_ssh(self, ev):
-        """Record an SSH/Cowrie event shipped to /api/ingest as a honeypot hit."""
+        """Record an SSH/Telnet Cowrie event shipped to /api/ingest as a hit."""
         ip = str(ev.get("src_ip", "?"))
         etype = ev.get("eventid", "")
         user = str(ev.get("username", ""))[:40]
         pw = str(ev.get("password", ""))[:40]
         cmd = str(ev.get("input", ""))[:120]
+        # Cowrie tags protocol as 'ssh' or 'telnet'
+        proto = str(ev.get("protocol", "")).lower()
+        PROTO = "TELNET" if proto == "telnet" else "SSH"
+        pre = PROTO.lower()
         if etype == "cowrie.command.input":
-            label, sev, sevnum, path = "SSH command executed", "high", 1, "$ " + cmd
+            label, sev, sevnum, path = f"{PROTO} command executed", "high", 1, "$ " + cmd
         elif etype in ("cowrie.login.success", "cowrie.login.failed"):
             ok = etype.endswith("success")
-            label = "SSH login " + ("SUCCESS" if ok else "attempt")
+            label = f"{PROTO} login " + ("SUCCESS" if ok else "attempt")
             sev, sevnum = ("high", 1) if ok else ("med", 2)
-            path = f"ssh {user}:{pw}"
+            path = f"{pre} {user}:{pw}"
         else:
-            label, sev, sevnum, path = "SSH session", "low", 3, etype
+            label, sev, sevnum, path = f"{PROTO} session", "low", 3, etype
         now = datetime.now(timezone.utc)
         geo = geo_lookup(ip)
-        hit = {"t": now.strftime("%H:%M:%S"), "ip": ip, "path": path, "ua": "SSH/cowrie",
-               "method": "SSH", "attack": True, "label": label, "sev": sev,
-               "sid": 9000070, "classtype": "attempted-admin",
+        hit = {"t": now.strftime("%H:%M:%S"), "ip": ip, "path": path, "ua": PROTO + "/cowrie",
+               "method": PROTO, "attack": True, "label": label, "sev": sev,
+               "sid": 9000070 if PROTO == "SSH" else 9000071, "classtype": "attempted-admin",
                "cc": geo["cc"], "country": geo["country"]}
         with LOCK:
             HITS.appendleft(hit); STATS["total"] += 1; STATS["attacks"] += 1
