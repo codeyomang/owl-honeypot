@@ -1,5 +1,5 @@
 # =====================================================================
-# OWL Honeypot — Suricata-format ruleset
+# Lulz Honeypot — Suricata-format ruleset
 # These are REAL Suricata rules (http keyword syntax). The honeypot's
 # Python engine mirrors these SIDs/classtypes/severities, and this file
 # can be loaded into an actual Suricata sensor unchanged.

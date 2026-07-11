@@ -1,4 +1,4 @@
-# OWL Honeypot — Deploy Guide
+# Lulz Honeypot — Deploy Guide
 
 A real, single-page **SOC-console honeypot**: logs genuine attack traffic,
 classifies it with Suricata-style signatures, plots sources on a 3D globe +

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =====================================================================
-#  OWL Honeypot — remote one-liner installer.
+#  Lulz Honeypot — remote one-liner installer.
 #  Clones the repo and runs setup.sh. Meant to be curl-piped:
 #
 #    curl -fsSL https://raw.githubusercontent.com/<USER>/<REPO>/main/install.sh \

@@ -1,5 +1,5 @@
 # =====================================================================
-#  OWL Honeypot — Caddy reverse proxy (production)
+#  Lulz Honeypot — Caddy reverse proxy (production)
 #  Fronts the Python honeypot with automatic Let's Encrypt TLS +
 #  the passthrough of the REAL client IP (so GeoIP + logs are accurate)
 #  + hardened response headers (GatesOS-grade).

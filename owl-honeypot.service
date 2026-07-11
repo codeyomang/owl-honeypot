@@ -8,7 +8,7 @@
 #  Edit User/paths below to match your box.
 # =====================================================================
 [Unit]
-Description=OWL Honeypot (real attack logging + honeytokens)
+Description=Lulz Honeypot (real attack logging + honeytokens)
 After=network-online.target
 Wants=network-online.target
 

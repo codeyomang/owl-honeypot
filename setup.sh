@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =====================================================================
-#  OWL Honeypot — one-shot installer for a fresh Debian/Ubuntu box.
+#  Lulz Honeypot — one-shot installer for a fresh Debian/Ubuntu box.
 #  Installs the app to /opt/owl-honeypot, sets up the systemd service,
 #  installs Caddy, and wires TLS for your domain.
 #

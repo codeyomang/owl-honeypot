@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OWL Honeypot — real self-hit logging + live feed.
+Lulz Honeypot — real self-hit logging + live feed.
 Every HTTP request to this server is recorded. Requests matching known
 attack/recon patterns (probing for /wp-admin, /.env, /.git, shells, etc.)
 are flagged. The one-pager UI polls /api/feed to render hits in real time.

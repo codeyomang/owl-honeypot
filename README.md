@@ -1,4 +1,4 @@
-# 🕸 OWL Honeypot
+# 🕸 Lulz Honeypot
 
 A real, single-page **SOC-console honeypot**. Logs genuine attack traffic,
 classifies it with Suricata-style signatures, plots sources on a rotating 3D
