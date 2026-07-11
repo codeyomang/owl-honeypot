@@ -13,6 +13,21 @@
 honeypot.example.com {
 	encode zstd gzip
 
+	# --- Protect the raw attack-log export (/api/eve) with basic auth ---
+	# Anyone can watch the live dashboard, but the raw EVE-JSON export is
+	# sensitive. Generate a hash:  caddy hash-password --plaintext 'yourpass'
+	# then paste it below and uncomment. (Leave commented = eve is public.)
+	# basic_auth /api/eve {
+	#     admin <PASTE_CADDY_HASH_HERE>
+	# }
+
+	# --- Rate limit: stop a flood from hammering the little Python app ---
+	# (needs the caddy-ratelimit plugin; if not built in, this block is
+	#  harmless to leave commented. ufw+fail2ban already cover brute force.)
+	# rate_limit {
+	#     zone hp { key {remote_host}  events 120  window 1m }
+	# }
+
 	# forward everything to the honeypot app on localhost:8096
 	reverse_proxy 127.0.0.1:8096 {
 		# pass the real visitor IP so the honeypot logs/geo are accurate
