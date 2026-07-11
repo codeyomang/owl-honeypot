@@ -100,6 +100,30 @@ SSH attacks now appear in the live feed (method=SSH), globe, and severity mix.
 > ⚠️ The whole point is Cowrie listens on :22 as the attacker-facing SSH. Your
 > real admin SSH MUST be on a different port, key-only, before you do this.
 
+## TCP protocol honeypots (FTP/SMTP/Redis/MySQL/RDP)
+The server also opens native listeners for high-traffic attack ports and feeds
+them into the same dashboard (labels/globe/severity). Enabled by default;
+disable with `TCP_HONEYPOTS=off`.
+
+| Proto | Port | Catches |
+|-------|------|---------|
+| FTP   | 21   | anon-login + brute-force |
+| SMTP  | 25   | spam-relay / open-relay probes |
+| Redis | 6379 | unauth-access / RCE hunting |
+| MySQL | 3306 | exposed-DB scanners |
+| RDP   | 3389 | brute-force (ransomware vector) |
+
+**These ports must be free + opened in the firewall** to catch traffic:
+```bash
+sudo ufw allow 21,25,3306,3389,6379/tcp comment 'lulz tcp honeypots'
+```
+> The main app binds these on HONEYPOT_HOST (127.0.0.1 in the systemd unit).
+> To expose them to the internet, either set HONEYPOT_HOST=0.0.0.0 for the
+> service OR (better) leave the app on localhost and reverse-proxy/forward the
+> ports. For a dedicated honeypot box, running the app with HONEYPOT_HOST=0.0.0.0
+> is simplest — it's a trap, nothing sensitive is on it.
+> ⚠️ Make sure none of these ports collide with a real service you use.
+
 ## Feeding real Suricata (optional)
 `lulz-honeypot.rules` is valid Suricata syntax — load it on a real Suricata
 sensor to get the same detections at the packet level.

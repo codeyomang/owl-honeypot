@@ -516,12 +516,105 @@ def _graceful(signum, frame):
     print(f"\n[*] signal {signum}: saved + stopping.")
     sys.exit(0)
 
+# =====================================================================
+#  TCP protocol honeypots (FTP/SMTP/Redis/MySQL/RDP)
+#  Lightweight listeners: send a realistic banner, log the connection +
+#  whatever the attacker sends, feed the same dashboard/feed/globe.
+# =====================================================================
+import socket
+
+def record_tcp(proto, ip, detail, sid, sev="med", sevnum=2):
+    now = datetime.now(timezone.utc)
+    geo = geo_lookup(ip)
+    hit = {"t": now.strftime("%H:%M:%S"), "ip": ip, "path": detail[:120],
+           "ua": proto + "/honeypot", "method": proto, "attack": True,
+           "label": f"{proto} probe", "sev": sev, "sid": sid,
+           "classtype": "attempted-recon", "cc": geo["cc"], "country": geo["country"]}
+    with LOCK:
+        HITS.appendleft(hit); STATS["total"] += 1; STATS["attacks"] += 1
+        SEV[sevnum] += 1; BY_TYPE[f"{proto} probe"] += 1
+        BY_CLASS["attempted-recon"] += 1
+        if geo["cc"] != "??": BY_GEO[geo["country"]] += 1
+        EPS_TIMES.append(time.time())
+    ddos_check(ip)
+
+# proto -> (port, sid, banner-bytes, mode)
+#   mode 'line' = send banner, read a few lines, log creds/cmds
+#   mode 'blob' = send banner, read one blob, log hex/ascii
+TCP_PROTOS = {
+    "FTP":   (21,   9000080, b"220 (vsFTPd 3.0.3)\r\n", "line"),
+    "SMTP":  (25,   9000081, b"220 mail.lulz.local ESMTP Postfix\r\n", "line"),
+    "REDIS": (6379, 9000082, b"", "line"),      # redis: no banner; attacker sends cmds
+    "MYSQL": (3306, 9000083, None, "blob"),     # send a fake MySQL greeting packet
+    "RDP":   (3389, 9000084, b"", "blob"),      # log the connection attempt
+}
+
+def _mysql_greeting():
+    # minimal fake MySQL handshake v10 so scanners fingerprint it as MySQL
+    payload = b"\x0a" + b"8.0.32-lulz\x00" + b"\x01\x00\x00\x00" + secrets.token_bytes(8) + b"\x00"
+    hdr = bytes([len(payload) & 0xff, 0, 0, 0])
+    return hdr + payload
+
+# TCP honeypots must face the internet even when the HTTP app is behind a
+# proxy on 127.0.0.1. Default them to 0.0.0.0; override with TCP_HOST.
+TCP_HOST = os.environ.get("TCP_HOST", "0.0.0.0")
+
+def tcp_listener(proto):
+    port, sid, banner, mode = TCP_PROTOS[proto]
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind((TCP_HOST, port)); s.listen(50)
+    except Exception as e:
+        print(f"[!] {proto} listener could not bind :{port}: {e}"); return
+    print(f"[*] {proto} honeypot on :{port}")
+    while True:
+        try:
+            conn, addr = s.accept()
+        except Exception:
+            continue
+        threading.Thread(target=_handle_tcp, args=(proto, sid, banner, mode, conn, addr[0]), daemon=True).start()
+
+def _handle_tcp(proto, sid, banner, mode, conn, ip):
+    detail = "connect"
+    try:
+        conn.settimeout(6)
+        if proto == "MYSQL":
+            conn.sendall(_mysql_greeting())
+        elif banner:
+            conn.sendall(banner)
+        if mode == "line":
+            got = []
+            for _ in range(4):
+                data = conn.recv(256)
+                if not data: break
+                got.append(data.decode("latin1", "replace").strip())
+                # FTP/SMTP: politely prompt so they send creds
+                if proto == "FTP": conn.sendall(b"331 password required\r\n")
+                elif proto == "SMTP": conn.sendall(b"250 OK\r\n")
+            detail = " | ".join(x for x in got if x)[:120] or "connect"
+        else:  # blob
+            data = conn.recv(512)
+            if data:
+                detail = data[:40].hex()
+    except Exception:
+        pass
+    finally:
+        try: conn.close()
+        except Exception: pass
+    record_tcp(proto, ip, detail, sid)
+
+
 if __name__ == "__main__":
     load_state()
     atexit.register(save_state)
     signal.signal(signal.SIGTERM, _graceful)   # systemd/pkill stop -> save
     signal.signal(signal.SIGINT, _graceful)    # ctrl-c -> save
     threading.Thread(target=_autosave, daemon=True).start()
+    # start TCP protocol honeypots (disable with TCP_HONEYPOTS=off)
+    if os.environ.get("TCP_HONEYPOTS", "on").lower() != "off":
+        for _proto in TCP_PROTOS:
+            threading.Thread(target=tcp_listener, args=(_proto,), daemon=True).start()
     print(f"[*] LULZ honeypot listening on {HOST}:{PORT}  (UI: /  feed: /api/feed)")
     print(f"[*] geoip={'on' if GEOIP_ON else 'off'}  data={DATA_FILE}")
     try:
