@@ -231,6 +231,10 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(b)))
         self.send_header("Access-Control-Allow-Origin", "*")
+        # Never let a CDN/browser cache the live API or app assets -> fixes
+        # stale 'reconnecting' behind Cloudflare/proxies.
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
         self.end_headers()
         self.wfile.write(b)
 

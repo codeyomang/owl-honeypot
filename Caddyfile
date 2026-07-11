@@ -20,6 +20,10 @@ honeypot.example.com {
 		header_up X-Forwarded-For {remote_host}
 	}
 
+	# never cache the live API (defeats CDN/proxy caching of the feed)
+	@api path /api/*
+	header @api Cache-Control "no-store"
+
 	header {
 		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
 		X-Content-Type-Options "nosniff"

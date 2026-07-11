@@ -26,7 +26,7 @@
   }
   async function poll() {
     try {
-      const r = await fetch("/api/feed", { cache: "no-store" });
+      const r = await fetch("/api/feed?_=" + Date.now(), { cache: "no-store" });
       if (!r.ok) throw new Error(r.status);
       const d = await r.json();
       render(d);
@@ -368,6 +368,10 @@
   // hook both map + globe into the render wrapper
   const _r2 = render;
   render = function(d){ _r2(d); renderMap(d); updateGlobePts(d); };
+
+  // re-poll immediately when the tab regains focus (backgrounded tabs throttle timers)
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+  addEventListener("focus", poll);
 
   poll();
   setInterval(poll, 2000);
