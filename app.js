@@ -334,13 +334,20 @@
         first?(gx.moveTo(p.x,p.y),first=false):gx.lineTo(p.x,p.y);
       } gx.stroke();
     }
-    // attack points
+    // attack points — draw ALL of them; dim the ones on the far side
+    // (so a geographically-clustered attacker set is always visible)
     const t=Date.now()/1000;
     activePts.forEach(pt=>{
       const p=project(pt.lat,pt.lng,gR);
-      if(p.z<0) return;                        // back of globe
+      const back = p.z < 0;                    // far hemisphere
       const col = pt.hi ? "#ff4d5e" : "#34ff66";
-      const pr = 1 + (t*1.5+pt.seed)%1.6;       // pulsing ping
+      if(back){
+        // faint static dot on the back, no ping
+        gx.beginPath(); gx.arc(p.x,p.y,Math.min(1.5+pt.n*0.25,3.5),0,7);
+        gx.globalAlpha=0.22; gx.fillStyle=col; gx.fill(); gx.globalAlpha=1;
+        return;
+      }
+      const pr = 1 + (t*1.5+pt.seed)%1.6;       // pulsing ping (front only)
       gx.beginPath(); gx.arc(p.x,p.y,pr*(1+pt.n*0.15),0,7);
       gx.strokeStyle=col; gx.globalAlpha=Math.max(0,1-((t*1.5+pt.seed)%1.6)/1.6); gx.lineWidth=1; gx.stroke();
       gx.globalAlpha=1;
@@ -348,7 +355,7 @@
       gx.fillStyle=col; gx.shadowColor=col; gx.shadowBlur=8; gx.fill(); gx.shadowBlur=0;
     });
     gx.restore();
-    rot += 0.0025;
+    rot += 0.006;   // a touch faster so sources cycle into view
     requestAnimationFrame(drawGlobe);
   }
   function updateGlobePts(d){
