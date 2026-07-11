@@ -78,6 +78,28 @@ To rotate/replace them, edit the `CANARY_*` constants near the top of
 `server.py`. (These live at canarytokens.org; they keep working independently
 of this server.)
 
+## SSH honeypot (Cowrie) — optional, high value
+Adds real SSH attack capture (brute-force creds + commands attackers run),
+shipped into the same dashboard feed + globe.
+
+```bash
+# 1) MOVE YOUR REAL SSH OFF :22 FIRST or you'll lock yourself out!
+#    edit /etc/ssh/sshd_config -> Port 2222 ; systemctl restart ssh
+#    then re-run harden.sh so ufw allows your new SSH port.
+# 2) set INGEST_TOKEN in /opt/owl-honeypot/canary.env (openssl rand -hex 24)
+#    -> same value the dashboard reads.
+# 3) deploy Cowrie (needs docker):
+cd ssh-honeypot && docker compose up -d
+# 4) ship its events to the dashboard:
+sudo cp ship-cowrie.py /opt/owl-honeypot/ssh-honeypot/ 2>/dev/null || true
+sudo cp cowrie-shipper.service /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now cowrie-shipper
+```
+SSH attacks now appear in the live feed (method=SSH), globe, and severity mix.
+
+> ⚠️ The whole point is Cowrie listens on :22 as the attacker-facing SSH. Your
+> real admin SSH MUST be on a different port, key-only, before you do this.
+
 ## Feeding real Suricata (optional)
 `owl-honeypot.rules` is valid Suricata syntax — load it on a real Suricata
 sensor to get the same detections at the packet level.

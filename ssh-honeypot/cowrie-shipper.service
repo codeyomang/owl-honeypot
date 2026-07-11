@@ -1,0 +1,20 @@
+# systemd unit for the Cowrie -> dashboard log shipper.
+#   sudo cp cowrie-shipper.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now cowrie-shipper
+[Unit]
+Description=Lulz Honeypot - Cowrie SSH log shipper
+After=docker.service owl-honeypot.service
+Wants=owl-honeypot.service
+
+[Service]
+Type=simple
+# INGEST_TOKEN must match the dashboard's (in /opt/owl-honeypot/canary.env)
+EnvironmentFile=-/opt/owl-honeypot/canary.env
+Environment=DASH_URL=http://127.0.0.1:8096
+ExecStart=/usr/bin/python3 /opt/owl-honeypot/ssh-honeypot/ship-cowrie.py
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

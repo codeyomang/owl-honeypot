@@ -84,6 +84,8 @@ CANARY_AWS_KEY    = os.environ.get("CANARY_AWS_KEY", "AKIAEXAMPLE0PLACEHOLDER")
 CANARY_AWS_SECRET = os.environ.get("CANARY_AWS_SECRET", "exampleSecretPlaceholderDoNotUse000000000")
 CANARY_WEBBUG     = os.environ.get("CANARY_WEBBUG", "http://canarytokens.com/tags/PLACEHOLDER/post.jsp")
 CANARY_DNS        = os.environ.get("CANARY_DNS", "placeholder.canarytokens.com")
+# Shared secret for the SSH/Cowrie log shipper to POST events to /api/ingest.
+INGEST_TOKEN = os.environ.get("INGEST_TOKEN", "")   # set in canary.env to enable
 HONEYTOKENS = {
     "aws_key":  CANARY_AWS_KEY,
     "api_key":  "owl_live_" + secrets.token_hex(16),
@@ -301,12 +303,110 @@ class H(BaseHTTPRequestHandler):
                 f"<img src='{CANARY_WEBBUG}' width='1' height='1' style='position:absolute;opacity:0' alt=''>"
                 f"<!-- internal session token: {HONEYTOKENS['session']} -->"
                 "</body></html>")
+        p = self.path.rstrip("/").lower()
+        # fake exposed .git/config (repo-exposure bait)
+        if p.endswith("/.git/config"):
+            self._record()
+            return self._send(200,
+                "[core]\n\trepositoryformatversion = 0\n\tbare = false\n"
+                "[remote \"origin\"]\n\turl = https://github.com/owl-internal/prod-app.git\n"
+                f"\tfetch = +refs/heads/*:refs/remotes/origin/*\n", "text/plain")
+        # fake phpinfo()
+        if p.endswith("/phpinfo.php") or p.endswith("/info.php"):
+            self._record()
+            return self._send(200, "<h1>PHP Version 7.4.33</h1><table>"
+                "<tr><td>System</td><td>Linux owl-prod 5.15.0</td></tr>"
+                "<tr><td>Server API</td><td>FPM/FastCGI</td></tr>"
+                "<tr><td>DOCUMENT_ROOT</td><td>/var/www/owl</td></tr></table>")
+        # fake database backup (seed DNS canary as host)
+        if p.endswith(".sql") or p.endswith(".sql.gz") or "/backup" in p or "/dump" in p:
+            self._record()
+            return self._send(200,
+                "-- MySQL dump 10.13  Distrib 8.0\n"
+                f"-- Host: {CANARY_DNS}    Database: owl_prod\n"
+                "CREATE TABLE `users` (`id` int, `email` varchar(255), `pass_hash` varchar(255));\n"
+                "INSERT INTO `users` VALUES (1,'admin@owlautocs.com','$2y$10$abcdef...');\n", "text/plain")
+        # fake AWS credentials file (real canary)
+        if p.endswith("/.aws/credentials") or p.endswith("/credentials"):
+            self._record()
+            return self._send(200,
+                "[default]\n"
+                f"aws_access_key_id = {CANARY_AWS_KEY}\n"
+                f"aws_secret_access_key = {CANARY_AWS_SECRET}\n"
+                "region = us-east-2\n", "text/plain")
+        # fake private SSH key (bait; not a real key)
+        if p.endswith("/id_rsa") or p.endswith("/.ssh/id_rsa"):
+            self._record()
+            return self._send(200,
+                "-----BEGIN OPENSSH PRIVATE KEY-----\n"
+                "b3BlbnNzaC1rZXktdjEAAAAA" + secrets.token_hex(40) + "\n"
+                "-----END OPENSSH PRIVATE KEY-----\n", "text/plain")
+        # fake Apache server-status
+        if p.endswith("/server-status"):
+            self._record()
+            return self._send(200, "<h1>Apache Server Status</h1>"
+                "<pre>Total accesses: 184213 - Total Traffic: 4.2 GB\n"
+                "CPU Usage: u2.1 s.4\n1 requests currently being processed</pre>")
+        # fake API / swagger doc
+        if p.endswith("/api") or p.endswith("/api/v1") or p.endswith("/swagger.json") or p.endswith("/openapi.json"):
+            self._record()
+            return self._send(200, json.dumps({
+                "openapi": "3.0.0",
+                "info": {"title": "OWL Internal API", "version": "1.0"},
+                "servers": [{"url": "https://" + CANARY_DNS}],
+                "paths": {"/users": {"get": {"summary": "list users"}},
+                          "/admin/token": {"post": {"summary": "issue admin token"}}},
+            }), "application/json")
         # ANYTHING else = a probe. Record it, then serve a bland fake page.
         self._record()
         self._send(404, "<html><body><h1>404 Not Found</h1></body></html>")
 
+    def _ingest_ssh(self, ev):
+        """Record an SSH/Cowrie event shipped to /api/ingest as a honeypot hit."""
+        ip = str(ev.get("src_ip", "?"))
+        etype = ev.get("eventid", "")
+        user = str(ev.get("username", ""))[:40]
+        pw = str(ev.get("password", ""))[:40]
+        cmd = str(ev.get("input", ""))[:120]
+        if etype == "cowrie.command.input":
+            label, sev, sevnum, path = "SSH command executed", "high", 1, "$ " + cmd
+        elif etype in ("cowrie.login.success", "cowrie.login.failed"):
+            ok = etype.endswith("success")
+            label = "SSH login " + ("SUCCESS" if ok else "attempt")
+            sev, sevnum = ("high", 1) if ok else ("med", 2)
+            path = f"ssh {user}:{pw}"
+        else:
+            label, sev, sevnum, path = "SSH session", "low", 3, etype
+        now = datetime.now(timezone.utc)
+        geo = geo_lookup(ip)
+        hit = {"t": now.strftime("%H:%M:%S"), "ip": ip, "path": path, "ua": "SSH/cowrie",
+               "method": "SSH", "attack": True, "label": label, "sev": sev,
+               "sid": 9000070, "classtype": "attempted-admin",
+               "cc": geo["cc"], "country": geo["country"]}
+        with LOCK:
+            HITS.appendleft(hit); STATS["total"] += 1; STATS["attacks"] += 1
+            SEV[sevnum] += 1; BY_TYPE[label] += 1; BY_CLASS["attempted-admin"] += 1
+            if geo["cc"] != "??": BY_GEO[geo["country"]] += 1
+            EPS_TIMES.append(time.time())
+
     # attackers love POSTing to login/exploit endpoints — capture those too
     def do_POST(self):
+        # SSH/Cowrie log shipper -> /api/ingest (token-gated)
+        if self.path.split("?", 1)[0] == "/api/ingest":
+            n = int(self.headers.get("Content-Length", 0) or 0)
+            raw = self.rfile.read(min(n, 65536)).decode("utf-8", "replace")
+            if not INGEST_TOKEN or self.headers.get("X-Ingest-Token") != INGEST_TOKEN:
+                return self._send(403, '{"error":"forbidden"}', "application/json")
+            cnt = 0
+            for line in raw.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    self._ingest_ssh(json.loads(line)); cnt += 1
+                except Exception:
+                    pass
+            return self._send(200, json.dumps({"ingested": cnt}), "application/json")
         body = ""
         try:
             n = int(self.headers.get("Content-Length", 0))

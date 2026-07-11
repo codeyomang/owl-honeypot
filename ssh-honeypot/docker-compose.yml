@@ -1,0 +1,28 @@
+# =====================================================================
+#  Lulz Honeypot — SSH honeypot (Cowrie)
+#  Cowrie is a medium-interaction SSH/Telnet honeypot: it accepts
+#  brute-force logins, gives attackers a fake shell, and logs every
+#  credential + command they try. Events are shipped to the main
+#  dashboard's /api/ingest by the shipper (see ship-cowrie.py).
+#
+#  Deploy on the honeypot VPS:
+#    1) move REAL sshd off :22 first!  (edit /etc/ssh/sshd_config ->
+#       Port 2222 ; or whatever; re-run harden.sh so ufw allows it)
+#    2) docker compose up -d
+#    3) run the shipper (systemd unit provided: cowrie-shipper.service)
+# =====================================================================
+name: lulz-ssh-honeypot
+services:
+  cowrie:
+    image: cowrie/cowrie:latest
+    restart: always
+    ports:
+      - "22:2222"      # attacker-facing SSH  (host :22 -> cowrie 2222)
+      - "23:2223"      # telnet
+    volumes:
+      - cowrie-var:/cowrie/cowrie-git/var
+      - cowrie-etc:/cowrie/cowrie-git/etc
+    # cowrie writes JSON events to var/log/cowrie/cowrie.json
+volumes:
+  cowrie-var:
+  cowrie-etc:
