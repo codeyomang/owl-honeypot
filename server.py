@@ -239,6 +239,8 @@ class H(BaseHTTPRequestHandler):
         self.wfile.write(b)
 
     def do_GET(self):
+        # strip query string so /api/feed?_=123 (cache-buster) still routes
+        self.path = self.path.split("?", 1)[0]
         # API endpoints (not counted as attacks)
         if self.path == "/api/feed":
             with LOCK:
