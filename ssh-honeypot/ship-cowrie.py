@@ -19,9 +19,17 @@ def log(*a):
 
 DASH = os.environ.get("DASH_URL", "http://127.0.0.1:8096").rstrip("/")
 TOKEN = os.environ.get("INGEST_TOKEN", "")
-LOG = Path(os.environ.get("COWRIE_LOG",
-      "/var/lib/docker/volumes/lulz-ssh-honeypot_cowrie-var/_data/log/cowrie/cowrie.json"))
+# Cowrie may write a live 'cowrie.json' OR dated files 'cowrie.json.YYYY-MM-DD'
+# (daily rotation). Follow the NEWEST matching file; switch on rotation.
+LOG_DIR = Path(os.environ.get("COWRIE_LOG_DIR",
+      "/var/lib/docker/volumes/lulz-ssh-honeypot_cowrie-var/_data/log/cowrie"))
+LOG_GLOB = os.environ.get("COWRIE_LOG_GLOB", "cowrie.json*")
 WANT = {"cowrie.login.success", "cowrie.login.failed", "cowrie.command.input", "cowrie.session.connect"}
+
+def newest_log():
+    files = [p for p in LOG_DIR.glob(LOG_GLOB) if p.is_file()]
+    files.sort(key=lambda p: p.stat().st_mtime)
+    return files[-1] if files else None
 
 
 def post(batch):
@@ -44,18 +52,18 @@ def _handle_line(line, buf):
     except Exception:
         pass
 
-def _open_at_end():
-    while not LOG.exists():
-        log("[..] waiting for cowrie log to appear…"); time.sleep(5)
-    f = LOG.open()
-    f.seek(0, 2)
-    return f, os.fstat(f.fileno()).st_ino
-
 def follow():
     if not TOKEN:
         raise SystemExit("set INGEST_TOKEN (must match dashboard)")
-    log(f"[*] shipping {LOG} -> {DASH}/api/ingest (rotation-aware)")
-    f, ino = _open_at_end()
+    log(f"[*] shipping {LOG_DIR}/{LOG_GLOB} -> {DASH}/api/ingest (follows newest)")
+    cur = None
+    while cur is None:
+        cur = newest_log()
+        if cur is None:
+            log("[..] no cowrie log yet…"); time.sleep(5)
+    log(f"[*] following {cur.name}")
+    f = cur.open(); f.seek(0, 2)             # start at end of newest file
+    ino = os.fstat(f.fileno()).st_ino
     buf = []
     last_check = 0
     while True:
@@ -63,23 +71,21 @@ def follow():
         if line:
             _handle_line(line, buf)
             continue
-        # no new line: flush, then check for log ROTATION
         if buf:
             post(buf); buf.clear()
         now = time.time()
-        if now - last_check >= 2:
+        if now - last_check >= 3:
             last_check = now
             try:
-                # if cowrie.json now points at a different inode, it rotated:
-                # finish reading the old handle, then reopen the fresh file
-                if LOG.exists() and os.stat(LOG).st_ino != ino:
-                    for rest in f:           # drain tail of the rotated file
+                nl = newest_log()
+                if nl and nl.stat().st_ino != ino:   # newer dated file appeared
+                    for rest in f:            # drain old file's tail
                         _handle_line(rest, buf)
                     if buf: post(buf); buf.clear()
                     f.close()
-                    f = LOG.open(); f.seek(0, 0)   # read new file from start
+                    f = nl.open(); f.seek(0, 0)
                     ino = os.fstat(f.fileno()).st_ino
-                    log("[*] detected log rotation -> reopened cowrie.json")
+                    log(f"[*] rotation -> now following {nl.name}")
                     continue
             except Exception as e:
                 log("[!] rotation check error:", e)
