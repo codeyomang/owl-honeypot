@@ -92,6 +92,117 @@ HONEYTOKENS = {
     "session":  secrets.token_hex(24),
 }
 HONEYTOKEN_HITS = deque(maxlen=100)
+CAPTURED_CREDS = deque(maxlen=300)   # {t, ip, portal, user, pass, cc, country}
+C2_IOCS = deque(maxlen=200)          # {t, ip, type, ioc, cmd, ti} extracted C2 indicators
+CRED_STATS = Counter()               # portal -> count
+
+# ---- C2 / botnet indicator patterns (parsed from attacker commands) ----
+C2_SIGS = [
+    (re.compile(r"(wget|curl)\s+[^\s|;&]*", re.I),           "payload-download"),
+    (re.compile(r"(?:tftp|ftpget)\s+", re.I),                 "payload-download"),
+    (re.compile(r"\b(mirai|gafgyt|mozi|tsunami|kaiten|bashlite)\b", re.I), "botnet-family"),
+    (re.compile(r"chmod\s+\+?x", re.I),                       "exec-chain"),
+    (re.compile(r"/dev/(tcp|udp)/", re.I),                    "reverse-shell"),
+    (re.compile(r"(nc|ncat|netcat)\s+-[a-z]*e", re.I),        "reverse-shell"),
+    (re.compile(r"base64\s+-d|echo\s+[A-Za-z0-9+/]{40,}={0,2}", re.I), "encoded-payload"),
+    (re.compile(r"(xmrig|minerd|stratum\+tcp|cryptonight)", re.I), "cryptominer"),
+    (re.compile(r"\.(sh|bin|elf|arm7?|mips|x86|mpsl)\b", re.I), "malware-binary"),
+]
+# extract URLs and bare IPs (potential C2 / payload hosts) from a command
+URL_RE = re.compile(r"https?://[^\s'\"|;&)]+", re.I)
+IP_RE  = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+
+TI_CACHE = {}
+def threat_intel(indicator, is_ip):
+    """Cross-check an IP/URL-host against a free threat-intel source. Cached,
+    fail-open (returns {} on any error/timeout). GEOIP=off also disables this."""
+    if not GEOIP_ON:
+        return {}
+    key = indicator
+    if key in TI_CACHE:
+        return TI_CACHE[key]
+    res = {}
+    host = indicator
+    if not is_ip:
+        m = re.search(r"https?://([^/:\s]+)", indicator)
+        host = m.group(1) if m else indicator
+    # only look up bare IPs (URLs: resolve host cheaply via geo of the IP form)
+    try:
+        if IP_RE.fullmatch(host or ""):
+            # ip-api includes proxy/hosting flags = decent C2 signal, free tier
+            with urllib.request.urlopen(
+                f"http://ip-api.com/json/{host}?fields=country,proxy,hosting,as", timeout=2) as r:
+                d = json.loads(r.read().decode())
+                res = {"country": d.get("country"), "proxy": d.get("proxy"),
+                       "hosting": d.get("hosting"), "as": d.get("as")}
+    except Exception:
+        pass
+    TI_CACHE[key] = res
+    return res
+
+def scan_c2(cmd, src_ip):
+    """Parse an attacker command for C2/botnet indicators; record IOCs."""
+    if not cmd:
+        return None
+    tags = [name for rx, name in C2_SIGS if rx.search(cmd)]
+    if not tags:
+        return None
+    urls = URL_RE.findall(cmd)
+    ips = [i for i in IP_RE.findall(cmd) if i != src_ip]
+    now = datetime.now(timezone.utc)
+    for ioc, kind in [(u, "url") for u in urls] + [(i, "ip") for i in ips]:
+        ti = threat_intel(ioc, kind == "ip")
+        with LOCK:
+            C2_IOCS.appendleft({"t": now.strftime("%H:%M:%S"), "src": src_ip,
+                "type": kind, "ioc": ioc[:160], "tags": tags, "ti": ti,
+                "cmd": cmd[:160]})
+    if not urls and not ips:  # tagged behavior but no extractable host
+        with LOCK:
+            C2_IOCS.appendleft({"t": now.strftime("%H:%M:%S"), "src": src_ip,
+                "type": "behavior", "ioc": "", "tags": tags, "ti": {}, "cmd": cmd[:160]})
+    return tags
+
+# ---- Fake login portals (capture creds + IP) ----
+# path-prefix -> portal key. Serve a convincing branded login; POST logs creds.
+LOGIN_ROUTES = {
+    "/admin": "admin", "/login": "admin", "/wp-login.php": "admin",
+    "/wp-admin": "admin", "/administrator": "admin",
+    "/router": "router", "/cgi-bin/luci": "router", "/setup.cgi": "router",
+    "/webmail": "webmail", "/owa": "webmail", "/remote/login": "webmail",
+    "/vpn": "webmail", "/sslvpn": "webmail",
+}
+def login_portal_for(path):
+    pl = path.rstrip("/").lower()
+    for pre, portal in LOGIN_ROUTES.items():
+        if pl == pre or pl.startswith(pre + "/") or pl.startswith(pre + "?"):
+            return portal
+    return None
+
+def login_page(portal, err=False):
+    action = {"admin": "/admin", "router": "/router", "webmail": "/webmail"}[portal]
+    msg = "<p style='color:#c0392b'>Invalid credentials. Please try again.</p>" if err else ""
+    canary = (f"<img src='{CANARY_WEBBUG}' width=1 height=1 style='position:absolute;opacity:0' alt=''>"
+              f"<!-- session={HONEYTOKENS['session']} -->")
+    css = ("body{font-family:Arial,Helvetica,sans-serif;background:#eef1f5;margin:0}"
+           ".box{max-width:340px;margin:8% auto;background:#fff;padding:28px 26px;"
+           "border-radius:8px;box-shadow:0 2px 14px rgba(0,0,0,.12)}"
+           "h2{margin:0 0 4px;font-size:20px}.sub{color:#888;font-size:12px;margin-bottom:18px}"
+           "input{width:100%;padding:9px;margin:6px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}"
+           "button{width:100%;padding:10px;margin-top:10px;border:0;border-radius:4px;color:#fff;cursor:pointer}")
+    if portal == "admin":
+        title, brand, sub, color = "Sign in", "⚙ Admin Console", "Authorized personnel only", "#2c3e50"
+    elif portal == "router":
+        title, brand, sub, color = "Router Login", "📡 NetGear Genie", "Firmware v1.0.4.34", "#16a085"
+    else:
+        title, brand, sub, color = "Webmail", "✉ Corporate Webmail / VPN", "Outlook Web App", "#0072c6"
+    return (f"<!DOCTYPE html><html><head><meta charset=utf-8><title>{title}</title>"
+            f"<meta name=viewport content='width=device-width,initial-scale=1'>"
+            f"<style>{css}button{{background:{color}}}</style></head><body>"
+            f"<div class=box><h2>{brand}</h2><div class=sub>{sub}</div>{msg}"
+            f"<form method=post action='{action}'>"
+            f"<input name=username placeholder='Username' autofocus>"
+            f"<input name=password type=password placeholder='Password'>"
+            f"<button type=submit>Log In</button></form></div>{canary}</body></html>")
 
 # ---- App-layer DDoS / flood detection ----
 # NOTE: volumetric (network) DDoS must be handled upstream (Cloudflare /
@@ -316,6 +427,9 @@ class H(BaseHTTPRequestHandler):
                     "classtypes": BY_CLASS.most_common(6),
                     "honeytokens": list(HONEYTOKEN_HITS)[:10],
                     "ddos": dict(DDOS),
+                    "creds": list(CAPTURED_CREDS)[:20],
+                    "cred_total": sum(CRED_STATS.values()),
+                    "c2": list(C2_IOCS)[:20],
                     "eve": list(EVE)[:20],
                     "hits": list(HITS)[:60],
                 }
@@ -344,20 +458,10 @@ class H(BaseHTTPRequestHandler):
                     f"REDIS_HOST={CANARY_DNS}\n"
                     f"API_KEY={HONEYTOKENS['api_key']}\n")
             return self._send(200, body, "text/plain")
-        if self.path.rstrip("/") in ("/admin", "/login", "/wp-login.php"):
+        portal = login_portal_for(self.path)
+        if portal:
             self._record()
-            # fake login page: web-bug canary fires on load; session token bait in comment
-            return self._send(200,
-                "<html><head><title>Admin · Sign in</title></head><body>"
-                "<h2>Administrator Login</h2>"
-                "<form method=post action='/admin'>"
-                "<p>Username <input name=user></p>"
-                "<p>Password <input name=pass type=password></p>"
-                "<button>Sign in</button></form>"
-                # invisible web-bug canary token (loads -> alert):
-                f"<img src='{CANARY_WEBBUG}' width='1' height='1' style='position:absolute;opacity:0' alt=''>"
-                f"<!-- internal session token: {HONEYTOKENS['session']} -->"
-                "</body></html>")
+            return self._send(200, login_page(portal))
         p = self.path.rstrip("/").lower()
         # fake exposed .git/config (repo-exposure bait)
         if p.endswith("/.git/config"):
@@ -429,6 +533,7 @@ class H(BaseHTTPRequestHandler):
         pre = PROTO.lower()
         if etype == "cowrie.command.input":
             label, sev, sevnum, path = f"{PROTO} command executed", "high", 1, "$ " + cmd
+            scan_c2(cmd, ip)   # extract C2/botnet indicators from the command
         elif etype in ("cowrie.login.success", "cowrie.login.failed"):
             ok = etype.endswith("success")
             label = f"{PROTO} login " + ("SUCCESS" if ok else "attempt")
@@ -472,6 +577,23 @@ class H(BaseHTTPRequestHandler):
             body = self.rfile.read(min(n, 4096)).decode("utf-8", "replace")
         except Exception:
             pass
+        # fake login portal submission -> CAPTURE creds + IP
+        portal = login_portal_for(self.path)
+        if portal:
+            self._record(body)
+            from urllib.parse import parse_qs
+            q = parse_qs(body)
+            user = (q.get("username") or q.get("user") or [""])[0][:60]
+            pw = (q.get("password") or q.get("pass") or [""])[0][:60]
+            ip = client_ip(self)
+            geo = geo_lookup(ip)
+            with LOCK:
+                CAPTURED_CREDS.appendleft({"t": datetime.now(timezone.utc).strftime("%H:%M:%S"),
+                    "ip": ip, "portal": portal, "user": user, "pass": pw,
+                    "cc": geo["cc"], "country": geo["country"]})
+                CRED_STATS[portal] += 1
+            # always "reject" so they keep trying -> re-serve page with error
+            return self._send(200, login_page(portal, err=True))
         self._record(body)   # pass body so honeytoken replay in POST is caught
         self._send(404, "<html><body><h1>404 Not Found</h1></body></html>")
     do_HEAD = do_GET
@@ -487,6 +609,8 @@ def save_state():
                 "by_geo": dict(BY_GEO), "by_net": dict(BY_NET),
                 "sev": SEV, "hits": list(HITS)[:200], "eve": list(EVE)[:200],
                 "honeytokens": list(HONEYTOKEN_HITS),
+                "creds": list(CAPTURED_CREDS), "cred_stats": dict(CRED_STATS),
+                "c2": list(C2_IOCS),
             }))
     except Exception as e:
         print("[!] save failed:", e)
@@ -503,6 +627,9 @@ def load_state():
         for h in reversed(d.get("hits", [])): HITS.appendleft(h)
         for e in reversed(d.get("eve", [])): EVE.appendleft(e)
         for t in reversed(d.get("honeytokens", [])): HONEYTOKEN_HITS.appendleft(t)
+        for c in reversed(d.get("creds", [])): CAPTURED_CREDS.appendleft(c)
+        CRED_STATS.update(d.get("cred_stats", {}))
+        for c in reversed(d.get("c2", [])): C2_IOCS.appendleft(c)
         print(f"[*] restored {STATS['total']} hits from {DATA_FILE.name}")
     except Exception as e:
         print("[!] load failed:", e)

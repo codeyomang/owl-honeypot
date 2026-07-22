@@ -169,6 +169,24 @@ body>*:not(#grid):not(#matrix):not(#scanlines){position:relative;z-index:1}
   padding:2px 7px;border-radius:4px;text-decoration:none}
 .suri-actions a:hover{border-color:var(--grn)}
 
+/* captured credentials panel */
+.creds .ph{color:#ff6fb5}
+.credrows{padding:4px 0;font-size:12px;max-height:190px;overflow-y:auto}
+.credrow{padding:6px 14px;border-bottom:1px solid #0f1a20;display:flex;gap:8px;flex-wrap:wrap}
+.credrow .who{color:#ff8fc4;font-weight:700}
+.credrow .pw{color:var(--amber);word-break:break-all}
+.credrow .meta{color:var(--dim);font-size:11px;margin-left:auto}
+.credrow .portal{font-size:10px;padding:1px 6px;border-radius:3px;background:#2a1420;color:#ff8fc4}
+
+/* C2 / IOC panel */
+.c2 .ph{color:#ff4d5e}
+.c2rows{padding:4px 0;font-size:11.5px;max-height:200px;overflow-y:auto}
+.c2row{padding:7px 14px;border-bottom:1px solid #0f1a20;border-left:3px solid var(--red)}
+.c2row .ioc{color:var(--red);word-break:break-all;font-weight:700}
+.c2row .tags{color:var(--amber);font-size:10px}
+.c2row .ti{color:var(--dim);font-size:10px}
+.c2row .badhost{color:var(--red)}
+
 /* honeytoken panel */
 .token .ph{color:#ffd166}
 .tokrows{padding:6px 0;font-size:12px;overflow-y:auto}

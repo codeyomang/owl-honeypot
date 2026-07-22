@@ -95,6 +95,30 @@
       ? tk.map(h => `<div class="tokhit">🚨 <b>${esc(h.token)}</b> replayed by ${flag(h.cc)} ${esc(h.ip)} <span class="tm">${esc(h.t)}</span></div>`).join("")
       : '<div class="empty">no bait triggered — decoy creds planted in /.env &amp; /admin</div>';
 
+    // captured credentials panel
+    const cr = d.creds || [];
+    if ($("#credcount")) $("#credcount").textContent = (d.cred_total || 0).toLocaleString();
+    if ($("#credrows")) $("#credrows").innerHTML = cr.length
+      ? cr.map(c => `<div class="credrow"><span class="portal">${esc(c.portal)}</span>`
+          + `<span class="who">${esc(c.user||"(blank)")}</span> / <span class="pw">${esc(c.pass||"(blank)")}</span>`
+          + `<span class="meta">${flag(c.cc)} ${esc(c.ip)} · ${esc(c.t)}</span></div>`).join("")
+      : '<div class="empty">no creds captured — fake logins at /admin /router /webmail</div>';
+
+    // C2 / IOC panel
+    const c2 = d.c2 || [];
+    if ($("#c2count")) $("#c2count").textContent = c2.length;
+    if ($("#c2rows")) $("#c2rows").innerHTML = c2.length
+      ? c2.map(x => {
+          const ti = x.ti || {};
+          const flags = [ti.proxy?"PROXY":"", ti.hosting?"HOSTING":"", ti.country||""].filter(Boolean).join(" · ");
+          const iocline = x.ioc ? `<div class="ioc">${esc(x.type.toUpperCase())}: ${esc(x.ioc)}</div>` : "";
+          return `<div class="c2row">${iocline}`
+            + `<div class="tags">${esc((x.tags||[]).join(", "))}</div>`
+            + (flags?`<div class="ti badhost">⚠ ${esc(flags)}</div>`:"")
+            + `<div class="ti">from ${flag("")}${esc(x.src)} · ${esc(x.t)}</div></div>`;
+        }).join("")
+      : '<div class="empty">no C2 indicators seen yet</div>';
+
     const rows = $("#rows");
     if (!d.hits.length) {
       rows.innerHTML = '<div class="empty">waiting for traffic… (probes usually arrive within minutes of going public)</div>';

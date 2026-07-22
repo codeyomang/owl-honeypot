@@ -40,3 +40,8 @@ alert tcp any any -> any 25   (msg:"LULZ SMTP honeypot - relay/probe"; classtype
 alert tcp any any -> any 6379 (msg:"LULZ Redis honeypot - unauth access probe"; classtype:attempted-recon; sid:9000082; rev:1; metadata:severity medium;)
 alert tcp any any -> any 3306 (msg:"LULZ MySQL honeypot - connection probe"; classtype:attempted-recon; sid:9000083; rev:1; metadata:severity medium;)
 alert tcp any any -> any 3389 (msg:"LULZ RDP honeypot - brute-force probe"; classtype:attempted-admin; sid:9000084; rev:1; metadata:severity medium;)
+
+# --- Credential capture + C2/botnet indicators ---
+alert http any any -> any any (msg:"LULZ credential capture - fake login POST"; flow:established,to_server; http.method; content:"POST"; http.uri; pcre:"/\/(admin|login|router|webmail|owa|vpn|sslvpn)/i"; classtype:attempted-admin; sid:9000090; rev:1; metadata:severity high;)
+alert http any any -> any any (msg:"LULZ C2/botnet - payload download in attacker command"; classtype:trojan-activity; sid:9000091; rev:1; metadata:severity critical;)
+alert http any any -> any any (msg:"LULZ C2/botnet - Mirai/Gafgyt family indicator"; classtype:trojan-activity; sid:9000092; rev:1; metadata:severity critical;)
