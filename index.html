@@ -91,6 +91,11 @@
       <div class="ph">☢ c2 / botnet iocs <span class="hint" id="c2count">0</span></div>
       <div class="c2rows" id="c2rows"><div class="empty">no C2 indicators seen yet</div></div>
     </div>
+    <div class="panel prof">
+      <div class="ph">🎯 attacker profiles <span class="hint" id="profcount">0</span>
+        <span class="suri-actions"><a href="/api/feed-export.csv" download="threatfeed.csv">⬇ csv</a><a href="/api/stix" download="iocs.stix.json">⬇ stix</a></span></div>
+      <div class="profrows" id="profrows"><div class="empty">building attacker profiles…</div></div>
+    </div>
     <div class="panel token">
       <div class="ph">🍯 honeytokens <span class="hint">canary bait</span></div>
       <div class="tokrows" id="tokrows"><div class="empty">no bait triggered — decoy creds in /.env &amp; /admin</div></div>

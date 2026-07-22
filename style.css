@@ -187,6 +187,16 @@ body>*:not(#grid):not(#matrix):not(#scanlines){position:relative;z-index:1}
 .c2row .ti{color:var(--dim);font-size:10px}
 .c2row .badhost{color:var(--red)}
 
+/* attacker profiles panel (the sellable intel) */
+.prof .ph{color:var(--blue)}
+.profrows{padding:4px 0;font-size:11.5px;max-height:240px;overflow-y:auto}
+.profrow{padding:7px 14px;border-bottom:1px solid #0f1a20}
+.profrow .pip{color:var(--blue);font-weight:700}
+.profrow .pmeta{color:var(--dim);font-size:10.5px}
+.profrow .ptag{display:inline-block;font-size:9.5px;padding:0 5px;margin:2px 3px 0 0;border-radius:3px;background:#12202a;color:var(--dim)}
+.profrow .ptag.bad{background:rgba(255,77,94,.15);color:var(--red)}
+.profrow .ptag.gn{background:rgba(255,176,32,.15);color:var(--amber)}
+
 /* honeytoken panel */
 .token .ph{color:#ffd166}
 .tokrows{padding:6px 0;font-size:12px;overflow-y:auto}

@@ -13,7 +13,7 @@ Run:  python3 server.py [port]            (default 8096)
 Env:  HONEYPOT_PORT, HONEYPOT_HOST, HONEYPOT_DATA (persistence file),
       GEOIP=off  to disable outbound geo lookups.
 """
-import json, os, re, sys, time, threading, html, secrets, urllib.request, atexit, signal
+import json, os, re, sys, time, threading, html, secrets, urllib.request, urllib.parse, atexit, signal
 from collections import deque, Counter, defaultdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -86,6 +86,11 @@ CANARY_WEBBUG     = os.environ.get("CANARY_WEBBUG", "http://canarytokens.com/tag
 CANARY_DNS        = os.environ.get("CANARY_DNS", "placeholder.canarytokens.com")
 # Shared secret for the SSH/Cowrie log shipper to POST events to /api/ingest.
 INGEST_TOKEN = os.environ.get("INGEST_TOKEN", "")   # set in canary.env to enable
+# ---- OSINT enrichment API keys (all optional; set in canary.env) ----
+GREYNOISE_KEY = os.environ.get("GREYNOISE_KEY", "")
+VT_KEY        = os.environ.get("VT_KEY", "")          # VirusTotal (free tier)
+ABUSEIPDB_KEY = os.environ.get("ABUSEIPDB_KEY", "")
+OSINT_ON = os.environ.get("OSINT", "on").lower() != "off"
 HONEYTOKENS = {
     "aws_key":  CANARY_AWS_KEY,
     "api_key":  "lulz_live_" + secrets.token_hex(16),
@@ -139,6 +144,148 @@ def threat_intel(indicator, is_ip):
         pass
     TI_CACHE[key] = res
     return res
+
+# =====================================================================
+#  OSINT ENRICHMENT ENGINE
+#  Turns raw hits into attacker intelligence. All lookups cached +
+#  fail-open (missing key / timeout -> partial data, never crashes).
+# =====================================================================
+import socket as _sock
+IP_ENRICH = {}          # ip -> enrichment dict (cached)
+HASH_ENRICH = {}        # sha256 -> malware intel
+ATTACKER_PROFILES = {}  # ip -> rolled-up profile
+_ENRICH_LOCK = threading.Lock()
+
+def _http_json(url, headers=None, timeout=3):
+    try:
+        req = urllib.request.Request(url, headers=headers or {})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode("utf-8", "replace"))
+    except Exception:
+        return None
+
+def _reverse_dns(ip):
+    try:
+        return _sock.gethostbyaddr(ip)[0]
+    except Exception:
+        return ""
+
+def enrich_ip(ip):
+    """Full IP OSINT: rDNS + ASN/org/geo + proxy/hosting + GreyNoise +
+    AbuseIPDB. Cached. Returns a dict; keys absent if a source is down/unset."""
+    if not OSINT_ON or not ip or ip.startswith(("127.", "10.", "192.168.", "172.", "::1")):
+        return {}
+    if ip in IP_ENRICH:
+        return IP_ENRICH[ip]
+    e = {"ip": ip}
+    # ip-api: ASN, org, geo, proxy/hosting/mobile flags (free, no key)
+    d = _http_json(f"http://ip-api.com/json/{ip}?fields=country,countryCode,city,isp,org,as,asname,proxy,hosting,mobile,reverse")
+    if d:
+        e.update({"country": d.get("country"), "cc": d.get("countryCode"),
+                  "city": d.get("city"), "isp": d.get("isp"), "org": d.get("org"),
+                  "asn": d.get("as"), "asname": d.get("asname"),
+                  "proxy": bool(d.get("proxy")), "hosting": bool(d.get("hosting")),
+                  "mobile": bool(d.get("mobile"))})
+    e["rdns"] = e.get("reverse") or _reverse_dns(ip)
+    # GreyNoise (community endpoint, key optional but recommended)
+    if GREYNOISE_KEY:
+        g = _http_json(f"https://api.greynoise.io/v3/community/{ip}",
+                       headers={"key": GREYNOISE_KEY, "Accept": "application/json"})
+        if g and "noise" in g:
+            e["greynoise"] = {"noise": g.get("noise"), "riot": g.get("riot"),
+                              "classification": g.get("classification"),
+                              "name": g.get("name"), "last_seen": g.get("last_seen")}
+    # AbuseIPDB (optional key)
+    if ABUSEIPDB_KEY:
+        a = _http_json(f"https://api.abuseipdb.com/api/v2/check?ipAddress={ip}&maxAgeInDays=90",
+                       headers={"Key": ABUSEIPDB_KEY, "Accept": "application/json"})
+        if a and a.get("data"):
+            e["abuse_score"] = a["data"].get("abuseConfidenceScore")
+            e["abuse_reports"] = a["data"].get("totalReports")
+    # derived scanner/threat tag
+    tags = []
+    if e.get("proxy"): tags.append("proxy/vpn")
+    if e.get("hosting"): tags.append("hosting/datacenter")
+    gn = e.get("greynoise", {})
+    if gn.get("classification") == "malicious": tags.append("greynoise:malicious")
+    elif gn.get("classification") == "benign": tags.append("greynoise:benign-scanner")
+    if gn.get("noise"): tags.append("internet-noise")
+    if isinstance(e.get("abuse_score"), int) and e["abuse_score"] >= 50: tags.append("abuseipdb:high")
+    rd = (e.get("rdns") or "").lower()
+    if any(s in rd for s in ("scan", "censys", "shodan", "masscan", "research")):
+        tags.append("known-scanner")
+    e["tags"] = tags
+    with _ENRICH_LOCK:
+        IP_ENRICH[ip] = e
+    return e
+
+def enrich_hash(sha256):
+    """Malware intel for a payload hash: MalwareBazaar + VirusTotal (if key)."""
+    if not OSINT_ON or not sha256 or sha256 in HASH_ENRICH:
+        return HASH_ENRICH.get(sha256, {})
+    e = {"sha256": sha256}
+    # MalwareBazaar (free, no key) - POST form
+    try:
+        data = urllib.parse.urlencode({"query": "get_info", "hash": sha256}).encode()
+        req = urllib.request.Request("https://mb-api.abuse.ch/api/v1/", data=data)
+        with urllib.request.urlopen(req, timeout=4) as r:
+            mb = json.loads(r.read().decode())
+        if mb.get("query_status") == "ok" and mb.get("data"):
+            row = mb["data"][0]
+            e["malwarebazaar"] = {"family": row.get("signature"),
+                "file_type": row.get("file_type"), "first_seen": row.get("first_seen"),
+                "tags": row.get("tags")}
+    except Exception:
+        pass
+    if VT_KEY:
+        vt = _http_json(f"https://www.virustotal.com/api/v3/files/{sha256}",
+                        headers={"x-apikey": VT_KEY})
+        if vt and vt.get("data"):
+            st = vt["data"].get("attributes", {}).get("last_analysis_stats", {})
+            e["virustotal"] = {"malicious": st.get("malicious"), "suspicious": st.get("suspicious")}
+    with _ENRICH_LOCK:
+        HASH_ENRICH[sha256] = e
+    return e
+
+def update_profile(ip, method, label, sev):
+    """Roll a hit into a per-source attacker profile (the sellable intel unit)."""
+    if not ip or ip.startswith(("127.", "10.", "192.168.", "172.")):
+        return
+    net = ".".join(ip.split(".")[:3]) + ".0/24" if "." in ip else ip
+    now = time.time()
+    with _ENRICH_LOCK:
+        p = ATTACKER_PROFILES.get(ip)
+        if not p:
+            p = {"ip": ip, "net": net, "first": now, "hits": 0,
+                 "protocols": {}, "labels": {}, "max_sev": "low", "enrich": {}}
+            ATTACKER_PROFILES[ip] = p
+        p["last"] = now; p["hits"] += 1
+        p["protocols"][method] = p["protocols"].get(method, 0) + 1
+        p["labels"][label] = p["labels"].get(label, 0) + 1
+        order = {"low": 0, "med": 1, "high": 2}
+        if order.get(sev, 0) > order.get(p["max_sev"], 0): p["max_sev"] = sev
+        # cap memory
+        if len(ATTACKER_PROFILES) > 2000:
+            oldest = min(ATTACKER_PROFILES, key=lambda k: ATTACKER_PROFILES[k]["last"])
+            ATTACKER_PROFILES.pop(oldest, None)
+
+def _enrich_worker():
+    """Background: enrich the most-active unenriched attacker IPs (rate-limited
+    so we respect free-API limits)."""
+    while True:
+        time.sleep(4)
+        if not OSINT_ON:
+            continue
+        try:
+            with _ENRICH_LOCK:
+                todo = [ip for ip, p in ATTACKER_PROFILES.items() if not p.get("enrich")][:1]
+            for ip in todo:
+                e = enrich_ip(ip)
+                with _ENRICH_LOCK:
+                    if ip in ATTACKER_PROFILES:
+                        ATTACKER_PROFILES[ip]["enrich"] = e
+        except Exception:
+            pass
 
 def scan_c2(cmd, src_ip):
     """Parse an attacker command for C2/botnet indicators; record IOCs."""
@@ -390,6 +537,7 @@ class H(BaseHTTPRequestHandler):
             BY_NET[octet] += 1
         self._maybe_threshold(ip, now)
         ddos_check(ip)
+        update_profile(ip, hit["method"], hit["label"], hit["sev"])
         return hit
 
     def _send(self, code, body, ctype="text/html; charset=utf-8"):
@@ -433,7 +581,48 @@ class H(BaseHTTPRequestHandler):
                     "eve": list(EVE)[:20],
                     "hits": list(HITS)[:60],
                 }
+            # top attacker profiles (the sellable intel unit)
+            with _ENRICH_LOCK:
+                prof = sorted(ATTACKER_PROFILES.values(), key=lambda p: -p["hits"])[:15]
+                data["profiles"] = [{
+                    "ip": p["ip"], "net": p["net"], "hits": p["hits"],
+                    "max_sev": p["max_sev"],
+                    "protocols": sorted(p["protocols"], key=lambda k:-p["protocols"][k])[:5],
+                    "top_label": max(p["labels"], key=p["labels"].get) if p["labels"] else "",
+                    "enrich": p.get("enrich", {}),
+                } for p in prof]
+                data["profile_total"] = len(ATTACKER_PROFILES)
             return self._send(200, json.dumps(data), "application/json")
+        # --- OSINT threat-feed exports (sellable-product output formats) ---
+        if self.path == "/api/profiles":
+            with _ENRICH_LOCK:
+                out = list(ATTACKER_PROFILES.values())
+            return self._send(200, json.dumps(out, default=str), "application/json")
+        if self.path == "/api/feed-export.csv":
+            with _ENRICH_LOCK:
+                rows = ["ip,net,hits,max_sev,protocols,country,asn,proxy,hosting,greynoise,rdns"]
+                for p in ATTACKER_PROFILES.values():
+                    e = p.get("enrich", {}); gn = (e.get("greynoise") or {}).get("classification", "")
+                    rows.append(",".join(str(x).replace(",", " ") for x in [
+                        p["ip"], p["net"], p["hits"], p["max_sev"],
+                        "|".join(p["protocols"]), e.get("country", ""), e.get("asn", ""),
+                        e.get("proxy", ""), e.get("hosting", ""), gn, e.get("rdns", "")]))
+            return self._send(200, "\n".join(rows), "text/csv")
+        if self.path == "/api/stix":
+            # minimal STIX 2.1 bundle of malicious source IPs (feed for SIEM/TIP)
+            objs = []
+            with _ENRICH_LOCK:
+                for p in ATTACKER_PROFILES.values():
+                    if p["max_sev"] == "high" or p["hits"] >= 5:
+                        objs.append({"type": "indicator", "spec_version": "2.1",
+                            "id": "indicator--" + secrets.token_hex(16),
+                            "created": datetime.now(timezone.utc).isoformat(),
+                            "pattern": f"[ipv4-addr:value = '{p['ip']}']",
+                            "pattern_type": "stix", "valid_from": datetime.now(timezone.utc).isoformat(),
+                            "labels": ["malicious-activity"],
+                            "description": f"{p['hits']} hits, {p['max_sev']} sev, protocols: {','.join(p['protocols'])}"})
+            return self._send(200, json.dumps({"type": "bundle",
+                "id": "bundle--" + secrets.token_hex(16), "objects": objs}), "application/json")
         if self.path == "/api/eve":
             # downloadable Suricata EVE-JSON (one alert per line, like eve.json)
             with LOCK:
@@ -552,6 +741,7 @@ class H(BaseHTTPRequestHandler):
             SEV[sevnum] += 1; BY_TYPE[label] += 1; BY_CLASS["attempted-admin"] += 1
             if geo["cc"] != "??": BY_GEO[geo["country"]] += 1
             EPS_TIMES.append(time.time())
+        update_profile(ip, PROTO, label, sev)
 
     # attackers love POSTing to login/exploit endpoints — capture those too
     def do_POST(self):
@@ -664,6 +854,7 @@ def record_tcp(proto, ip, detail, sid, sev="med", sevnum=2):
         if geo["cc"] != "??": BY_GEO[geo["country"]] += 1
         EPS_TIMES.append(time.time())
     ddos_check(ip)
+    update_profile(ip, proto, f"{proto} probe", sev)
 
 # proto -> (port, sid, banner-bytes, mode)
 #   mode 'line' = send banner, read a few lines, log creds/cmds
@@ -738,6 +929,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, _graceful)   # systemd/pkill stop -> save
     signal.signal(signal.SIGINT, _graceful)    # ctrl-c -> save
     threading.Thread(target=_autosave, daemon=True).start()
+    threading.Thread(target=_enrich_worker, daemon=True).start()  # OSINT enrichment
     # start TCP protocol honeypots (disable with TCP_HONEYPOTS=off)
     if os.environ.get("TCP_HONEYPOTS", "on").lower() != "off":
         for _proto in TCP_PROTOS:

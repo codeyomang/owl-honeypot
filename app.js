@@ -119,6 +119,26 @@
         }).join("")
       : '<div class="empty">no C2 indicators seen yet</div>';
 
+    // attacker profiles panel (enriched OSINT)
+    const pf = d.profiles || [];
+    if ($("#profcount")) $("#profcount").textContent = (d.profile_total || 0).toLocaleString();
+    if ($("#profrows")) $("#profrows").innerHTML = pf.length
+      ? pf.map(p => {
+          const e = p.enrich || {}, gn = e.greynoise || {};
+          const tags = [];
+          if (e.proxy) tags.push('<span class="ptag">proxy/vpn</span>');
+          if (e.hosting) tags.push('<span class="ptag">hosting</span>');
+          if (gn.classification === "malicious") tags.push('<span class="ptag bad">GN:malicious</span>');
+          else if (gn.classification) tags.push('<span class="ptag gn">GN:'+esc(gn.classification)+'</span>');
+          if (typeof e.abuse_score === "number" && e.abuse_score >= 50) tags.push('<span class="ptag bad">abuse '+e.abuse_score+'</span>');
+          const asn = e.asname || e.asn || "";
+          return `<div class="profrow"><span class="pip">${flag(e.cc)} ${esc(p.ip)}</span> `
+            + `<span class="pmeta">${p.hits} hits · ${esc(p.protocols.join("/"))} · ${esc(p.max_sev)}</span>`
+            + `<div class="pmeta">${esc(e.country||"?")} · ${esc(asn)} ${e.rdns?("· "+esc(e.rdns)):""}</div>`
+            + `<div>${tags.join("")}</div></div>`;
+        }).join("")
+      : '<div class="empty">building attacker profiles…</div>';
+
     const rows = $("#rows");
     if (!d.hits.length) {
       rows.innerHTML = '<div class="empty">waiting for traffic… (probes usually arrive within minutes of going public)</div>';
