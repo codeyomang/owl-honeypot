@@ -11,8 +11,11 @@ Env:
 
 Run via systemd (cowrie-shipper.service). Pure stdlib.
 """
-import json, os, time, urllib.request
+import json, os, sys, time, urllib.request
 from pathlib import Path
+
+def log(*a):
+    print(*a); sys.stdout.flush()   # flush so journald shows it live
 
 DASH = os.environ.get("DASH_URL", "http://127.0.0.1:8096").rstrip("/")
 TOKEN = os.environ.get("INGEST_TOKEN", "")
@@ -31,29 +34,56 @@ def post(batch):
         print("[!] ship failed:", e)
 
 
+def _handle_line(line, buf):
+    try:
+        ev = json.loads(line)
+        if ev.get("eventid") in WANT:
+            buf.append(ev)
+            if len(buf) >= 20:
+                post(buf); buf.clear()
+    except Exception:
+        pass
+
+def _open_at_end():
+    while not LOG.exists():
+        log("[..] waiting for cowrie log to appear…"); time.sleep(5)
+    f = LOG.open()
+    f.seek(0, 2)
+    return f, os.fstat(f.fileno()).st_ino
+
 def follow():
     if not TOKEN:
         raise SystemExit("set INGEST_TOKEN (must match dashboard)")
-    print(f"[*] shipping {LOG} -> {DASH}/api/ingest")
-    while not LOG.exists():
-        print("[..] waiting for cowrie log to appear…"); time.sleep(5)
-    with LOG.open() as f:
-        f.seek(0, 2)                      # start at end (only new events)
-        buf = []
-        while True:
-            line = f.readline()
-            if not line:
-                if buf:
-                    post(buf); buf = []
-                time.sleep(1); continue
+    log(f"[*] shipping {LOG} -> {DASH}/api/ingest (rotation-aware)")
+    f, ino = _open_at_end()
+    buf = []
+    last_check = 0
+    while True:
+        line = f.readline()
+        if line:
+            _handle_line(line, buf)
+            continue
+        # no new line: flush, then check for log ROTATION
+        if buf:
+            post(buf); buf.clear()
+        now = time.time()
+        if now - last_check >= 2:
+            last_check = now
             try:
-                ev = json.loads(line)
-                if ev.get("eventid") in WANT:
-                    buf.append(ev)
-                    if len(buf) >= 20:
-                        post(buf); buf = []
-            except Exception:
-                pass
+                # if cowrie.json now points at a different inode, it rotated:
+                # finish reading the old handle, then reopen the fresh file
+                if LOG.exists() and os.stat(LOG).st_ino != ino:
+                    for rest in f:           # drain tail of the rotated file
+                        _handle_line(rest, buf)
+                    if buf: post(buf); buf.clear()
+                    f.close()
+                    f = LOG.open(); f.seek(0, 0)   # read new file from start
+                    ino = os.fstat(f.fileno()).st_ino
+                    log("[*] detected log rotation -> reopened cowrie.json")
+                    continue
+            except Exception as e:
+                log("[!] rotation check error:", e)
+        time.sleep(1)
 
 
 if __name__ == "__main__":
