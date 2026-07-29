@@ -187,31 +187,31 @@
 
   // --- pop-art layer 1: Warhol color-quadrant wash + graffiti paint drips ---
   const cv = $("#clouds"), ctx = cv && cv.getContext("2d");
-  const POP = ["#ff3ea5","#00c2c7","#ffd400","#ff6a00","#7b2ff7","#1f6dff","#2ecc40"];
+  const POP = ["#e0709f","#5bb3b6","#e8c766","#df8a52","#8f78c4","#5f86c9","#6aa96f"];
   let W, H, drips = [];
   function newDrip(){
-    return { x:Math.random()*W, y:-20, len:0, max:40+Math.random()*180,
-      w:5+Math.random()*10, v:0.6+Math.random()*1.4,
+    return { x:Math.random()*W, y:-20, len:0, max:40+Math.random()*160,
+      w:4+Math.random()*8, v:0.5+Math.random()*1.1,
       col:POP[Math.floor(Math.random()*POP.length)], blob:false };
   }
   function resize(){
     if(!cv) return;
     W=cv.width=innerWidth; H=cv.height=innerHeight;
-    drips = Array.from({length:10}, newDrip);
+    drips = Array.from({length:7}, newDrip);
   }
   function draw(){
     if(!ctx) return;
     ctx.clearRect(0,0,W,H);
     // faint Warhol 2x2 color-block wash in the corners (silkscreen tint)
-    ctx.globalAlpha=0.06;
-    const bw=W/2, bh=H/2, quad=["#ff3ea5","#00c2c7","#ffd400","#7b2ff7"];
+    ctx.globalAlpha=0.035;
+    const bw=W/2, bh=H/2, quad=["#e0709f","#5bb3b6","#e8c766","#8f78c4"];
     ctx.fillStyle=quad[0]; ctx.fillRect(0,0,bw,bh);
     ctx.fillStyle=quad[1]; ctx.fillRect(bw,0,bw,bh);
     ctx.fillStyle=quad[2]; ctx.fillRect(0,bh,bw,bh);
     ctx.fillStyle=quad[3]; ctx.fillRect(bw,bh,bw,bh);
     ctx.globalAlpha=1;
     // spray-paint drips creeping down from the top edge (graffiti)
-    ctx.globalAlpha=0.5;
+    ctx.globalAlpha=0.32;
     drips.forEach((d,i)=>{
       if(d.len<d.max) d.len+=d.v;
       ctx.strokeStyle=d.col; ctx.lineWidth=d.w; ctx.lineCap="round";
@@ -233,7 +233,7 @@
   function mresize(){
     if(!mx) return;
     MW=mx.width=innerWidth; MH=mx.height=innerHeight;
-    props = Array.from({length:7},()=>({x:Math.random()*MW, y:Math.random()*MH,
+    props = Array.from({length:5},()=>({x:Math.random()*MW, y:Math.random()*MH,
       a:Math.random()*6.28, v:0.5+Math.random()*0.8, wob:Math.random()*6.28,
       spin:(Math.random()-0.5)*0.04, rot:Math.random()*6.28,
       icon:ICONS[Math.floor(Math.random()*ICONS.length)], size:20+Math.random()*10}));
@@ -241,7 +241,7 @@
   function fly(){
     if(!mctx) return;
     mctx.clearRect(0,0,MW,MH);
-    mctx.globalAlpha=0.85;
+    mctx.globalAlpha=0.6;
     props.forEach(p=>{
       p.wob+=0.05; p.a+=(Math.random()-0.5)*0.06; p.rot+=p.spin;
       p.x+=Math.cos(p.a)*p.v; p.y+=Math.sin(p.a)*p.v*0.6+Math.sin(p.wob)*0.5;

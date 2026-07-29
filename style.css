@@ -1,12 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Bungee&family=Fredoka:wght@400;500;600;700&family=Permanent+Marker&display=swap');
 :root{
-  /* Warhol pop-art blocks */
-  --bg:#fff3d9; --panel:#fffef8; --line:#111; --fg:#141414; --dim:#7a6f63;
-  --pop-pink:#ff3ea5; --pop-teal:#00c2c7; --pop-yellow:#ffd400; --pop-orange:#ff6a00;
-  --pop-purple:#7b2ff7; --pop-blue:#1f6dff; --pop-green:#2ecc40;
+  /* Warhol pop-art blocks — muted/pastel-pop, easier on the eyes */
+  --bg:#f5ecd8; --panel:#fbf7ee; --line:#1c1c1c; --fg:#242424; --dim:#8a7d6c;
+  --pop-pink:#e0709f; --pop-teal:#5bb3b6; --pop-yellow:#e8c766; --pop-orange:#df8a52;
+  --pop-purple:#8f78c4; --pop-blue:#5f86c9; --pop-green:#6aa96f;
   /* Alec-Monopoly graffiti */
-  --money:#2e7d32; --hat:#111; --drip:#ff3ea5;
-  --honey:#ffb400; --berry:#ff3ea5; --leaf:#2ecc40; --sky:#1f6dff; --lav:#7b2ff7;
+  --money:#4f8a52; --hat:#1c1c1c; --drip:#e0709f;
+  --honey:#e0a94a; --berry:#e0709f; --leaf:#6aa96f; --sky:#5f86c9; --lav:#8f78c4;
   --ink:2.5px solid #111;
   --shadow:4px 4px 0 #111;
   --shadow-sm:3px 3px 0 #111;
@@ -17,20 +17,20 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:13px;font-weight:500;
-  /* halftone dot field baked into the page */
-  background-image:radial-gradient(circle,rgba(0,0,0,.06) 1.4px,transparent 1.5px);
-  background-size:14px 14px;
+  /* halftone dot field baked into the page (subtle) */
+  background-image:radial-gradient(circle,rgba(0,0,0,.04) 1.3px,transparent 1.4px);
+  background-size:16px 16px;
   display:grid;grid-template-rows:auto auto 1fr;height:100dvh}
 #bees{position:fixed;inset:0;z-index:0;pointer-events:none}
 #clouds{position:fixed;inset:0;z-index:0;pointer-events:none}
 body>*:not(#bees):not(#clouds){position:relative;z-index:1}
 
-.bar{padding:12px 20px;border-bottom:5px solid var(--line);
-  background:repeating-linear-gradient(135deg,var(--pop-yellow) 0 26px,#ffe45c 26px 52px)}
+.bar{padding:12px 20px;border-bottom:4px solid var(--line);
+  background:repeating-linear-gradient(135deg,var(--pop-yellow) 0 26px,#efd88a 26px 52px)}
 .topline{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
-.brand{font-family:var(--display);font-size:26px;letter-spacing:.01em;color:#111;
-  text-shadow:3px 3px 0 var(--pop-pink),6px 6px 0 var(--pop-teal)}
-.brand b{color:var(--pop-pink);-webkit-text-stroke:1px #111}
+.brand{font-family:var(--display);font-size:26px;letter-spacing:.01em;color:#1c1c1c;
+  text-shadow:2px 2px 0 var(--pop-pink),4px 4px 0 var(--pop-teal)}
+.brand b{color:var(--pop-pink);-webkit-text-stroke:.6px #1c1c1c}
 .brand .os{color:#111;margin-left:6px}
 .hud{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#111;letter-spacing:.02em;align-items:center;font-weight:600}
 .hud .h{background:#fff;border:var(--ink);border-radius:6px;padding:2px 8px;box-shadow:var(--shadow-sm)}
