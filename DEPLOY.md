@@ -100,22 +100,26 @@ SSH attacks now appear in the live feed (method=SSH), globe, and severity mix.
 > ⚠️ The whole point is Cowrie listens on :22 as the attacker-facing SSH. Your
 > real admin SSH MUST be on a different port, key-only, before you do this.
 
-## TCP protocol honeypots (FTP/SMTP/Redis/MySQL/RDP)
+## TCP protocol honeypots
 The server also opens native listeners for high-traffic attack ports and feeds
 them into the same dashboard (labels/globe/severity). Enabled by default;
 disable with `TCP_HONEYPOTS=off`.
 
-| Proto | Port | Catches |
-|-------|------|---------|
-| FTP   | 21   | anon-login + brute-force |
-| SMTP  | 25   | spam-relay / open-relay probes |
-| Redis | 6379 | unauth-access / RCE hunting |
-| MySQL | 3306 | exposed-DB scanners |
-| RDP   | 3389 | brute-force (ransomware vector) |
+| Proto     | Port  | Catches |
+|-----------|-------|---------|
+| FTP       | 21    | anon-login + brute-force |
+| Telnet    | 23    | IoT/Mirai brute-force |
+| SMTP      | 25    | spam-relay / open-relay probes |
+| Redis     | 6379  | unauth-access / RCE hunting |
+| MySQL     | 3306  | exposed-DB scanners |
+| RDP       | 3389  | brute-force (ransomware vector) |
+| VNC       | 5900  | exposed-desktop hunting |
+| Memcached | 11211 | amplification-DDoS / unauth-access |
+| MongoDB   | 27017 | exposed-DB / ransom scanners |
 
 **These ports must be free + opened in the firewall** to catch traffic:
 ```bash
-sudo ufw allow 21,25,3306,3389,6379/tcp comment 'lulz tcp honeypots'
+sudo ufw allow 21,23,25,3306,3389,5900,6379,11211,27017/tcp comment 'lulz tcp honeypots'
 ```
 > The main app binds these on HONEYPOT_HOST (127.0.0.1 in the systemd unit).
 > To expose them to the internet, either set HONEYPOT_HOST=0.0.0.0 for the

@@ -21,8 +21,8 @@
   let misses = 0;
   function setLive(on){
     const el = $("#live"); if(!el) return;
-    if(on){ el.textContent = "● LIVE"; el.style.color = "var(--red)"; el.style.animation = "blink 1.4s infinite"; }
-    else  { el.textContent = "● RECONNECTING…"; el.style.color = "var(--amber)"; el.style.animation = "none"; }
+    if(on){ el.textContent = "● LIVE"; el.style.color = "var(--berry)"; el.style.animation = "blink 1.4s infinite"; }
+    else  { el.textContent = "● RECONNECTING…"; el.style.color = "var(--honey)"; el.style.animation = "none"; }
   }
   async function poll() {
     try {
@@ -55,10 +55,10 @@
     // threat level from recent high-sev volume
     const sv = st.sev || { high: 0, med: 0, low: 0 };
     const tl = $("#threatlvl");
-    let lvl = "GUARDED", cls = "";
-    if (sv.high >= 5 || st.eps > 3) { lvl = "HIGH"; cls = "high"; }
-    else if (sv.high >= 1 || sv.med >= 3) { lvl = "ELEVATED"; cls = "elevated"; }
-    tl.textContent = "THREAT LEVEL " + lvl;
+    let lvl = "CALM", cls = "";
+    if (sv.high >= 5 || st.eps > 3) { lvl = "SWARMING"; cls = "high"; }
+    else if (sv.high >= 1 || sv.med >= 3) { lvl = "ABUZZ"; cls = "elevated"; }
+    tl.textContent = "HIVE MOOD " + lvl;
     tl.className = "h tl " + cls;
 
     // --- severity mix bar ---
@@ -78,7 +78,7 @@
       } else {
         bar.hidden = false;
         bar.className = "ddosbar " + dd.level;
-        const icon = dd.level === "under_attack" ? "🚨 UNDER ATTACK" : "⚠ ELEVATED TRAFFIC";
+        const icon = dd.level === "under_attack" ? "🚨 BEAR STAMPEDE" : "⚠ THE GARDEN IS BUSY";
         bar.textContent = `${icon} — ${dd.note || (dd.eps + " req/s")}`;
       }
     }
@@ -93,7 +93,7 @@
     const tk = d.honeytokens || [];
     $("#tokrows").innerHTML = tk.length
       ? tk.map(h => `<div class="tokhit">🚨 <b>${esc(h.token)}</b> replayed by ${flag(h.cc)} ${esc(h.ip)} <span class="tm">${esc(h.t)}</span></div>`).join("")
-      : '<div class="empty">no bait triggered — decoy creds planted in /.env &amp; /admin</div>';
+      : '<div class="empty">no jars opened — decoy jam in /.env &amp; /admin 🍓</div>';
 
     // captured credentials panel
     const cr = d.creds || [];
@@ -102,7 +102,7 @@
       ? cr.map(c => `<div class="credrow"><span class="portal">${esc(c.portal)}</span>`
           + `<span class="who">${esc(c.user||"(blank)")}</span> / <span class="pw">${esc(c.pass||"(blank)")}</span>`
           + `<span class="meta">${flag(c.cc)} ${esc(c.ip)} · ${esc(c.t)}</span></div>`).join("")
-      : '<div class="empty">no creds captured — fake logins at /admin /router /webmail</div>';
+      : '<div class="empty">no secrets whispered — fake doors at /admin /router /webmail 🚪</div>';
 
     // C2 / IOC panel
     const c2 = d.c2 || [];
@@ -117,7 +117,7 @@
             + (flags?`<div class="ti badhost">⚠ ${esc(flags)}</div>`:"")
             + `<div class="ti">from ${flag("")}${esc(x.src)} · ${esc(x.t)}</div></div>`;
         }).join("")
-      : '<div class="empty">no C2 indicators seen yet</div>';
+      : '<div class="empty">no dens discovered yet</div>';
 
     // attacker profiles panel (enriched OSINT)
     const pf = d.profiles || [];
@@ -137,11 +137,11 @@
             + `<div class="pmeta">${esc(e.country||"?")} · ${esc(asn)} ${e.rdns?("· "+esc(e.rdns)):""}</div>`
             + `<div>${tags.join("")}</div></div>`;
         }).join("")
-      : '<div class="empty">building attacker profiles…</div>';
+      : '<div class="empty">sketching bear portraits…</div>';
 
     const rows = $("#rows");
     if (!d.hits.length) {
-      rows.innerHTML = '<div class="empty">waiting for traffic… (probes usually arrive within minutes of going public)</div>';
+      rows.innerHTML = '<div class="empty">the jar is quiet… bears usually wander in within minutes of going public 🐾</div>';
     } else {
       rows.innerHTML = d.hits.map(h => `
         <div class="row ${sevClass(h)}">
@@ -155,7 +155,11 @@
     }
 
     $("#toptypes").innerHTML = d.top.length
-      ? d.top.map(([k, v]) => `<li>${esc(k)} <b>${v}</b></li>`).join("")
+      ? d.top.map(([k, v]) => `<li><span>${esc(k)}</span> <b>${v}</b></li>`).join("")
+      : '<li class="empty">none yet</li>';
+    const uas = d.uas || [];
+    if ($("#ualist")) $("#ualist").innerHTML = uas.length
+      ? uas.map(([k, v]) => `<li><span title="${esc(k)}">${esc(k)}</span> <b>${v}</b></li>`).join("")
       : '<li class="empty">none yet</li>';
     if ($("#topsrc")) $("#topsrc").innerHTML = d.sources.length
       ? d.sources.map(([k, v]) => `<li>${esc(k)} <b>${v}</b></li>`).join("")
@@ -174,43 +178,72 @@
             <div class="cat">${esc(a.category)} · ${esc(e.src_ip)} · ${esc(e.http.http_method)} ${esc(e.http.url)}</div>
           </div>`;
         }).join("")
-      : '<div class="empty">no alerts yet</div>';
+      : '<div class="empty">no tripwires tickled yet ✨</div>';
     const ct = d.classtypes || [];
     if ($("#classtypes")) $("#classtypes").innerHTML = ct.length
       ? ct.map(([k, v]) => `<li>${esc(k)} <b>${v}</b></li>`).join("")
       : '<li class="empty">none yet</li>';
   }
 
-  // background grid animation
-  const cv = $("#grid"), ctx = cv && cv.getContext("2d");
-  let W, H, t = 0;
-  function resize(){ if(cv){ W=cv.width=innerWidth; H=cv.height=innerHeight; } }
+  // --- whimsy layer 1: drifting clouds + falling petals ---
+  const cv = $("#clouds"), ctx = cv && cv.getContext("2d");
+  let W, H, clouds = [], petals = [];
+  function resize(){
+    if(!cv) return;
+    W=cv.width=innerWidth; H=cv.height=innerHeight;
+    clouds = Array.from({length:5},()=>({x:Math.random()*W, y:Math.random()*H*0.35,
+      r:40+Math.random()*60, v:0.08+Math.random()*0.15}));
+    petals = Array.from({length:14},()=>({x:Math.random()*W, y:Math.random()*H,
+      v:0.25+Math.random()*0.5, sway:Math.random()*6.28, size:3+Math.random()*4,
+      hue:["#f6c2d0","#fdeec9","#dcebfb","#e2f3e4"][Math.floor(Math.random()*4)]}));
+  }
   function draw(){
     if(!ctx) return;
     ctx.clearRect(0,0,W,H);
-    ctx.strokeStyle="rgba(57,255,139,.06)"; ctx.lineWidth=1;
-    const g=40, off=(t*0.3)%g;
-    for(let x=-off;x<W;x+=g){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-    for(let y=-off;y<H;y+=g){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-    t++; requestAnimationFrame(draw);
+    clouds.forEach(c=>{
+      ctx.fillStyle="rgba(255,255,255,.5)";
+      for(const [dx,dy,dr] of [[0,0,1],[-c.r*.6,c.r*.15,.7],[c.r*.6,c.r*.18,.75]]){
+        ctx.beginPath(); ctx.arc(c.x+dx,c.y+dy,c.r*dr,0,7); ctx.fill();
+      }
+      c.x+=c.v; if(c.x-c.r*2>W) c.x=-c.r*2;
+    });
+    petals.forEach(p=>{
+      p.sway+=0.02; p.y+=p.v; p.x+=Math.sin(p.sway)*0.4;
+      if(p.y>H+8){p.y=-8;p.x=Math.random()*W;}
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(Math.sin(p.sway)*0.9);
+      ctx.fillStyle=p.hue; ctx.beginPath();
+      ctx.ellipse(0,0,p.size,p.size*0.55,0,0,7); ctx.fill(); ctx.restore();
+    });
+    requestAnimationFrame(draw);
   }
   if(cv){ addEventListener("resize",resize); resize(); draw(); }
 
-  // --- GatesOS-style matrix rain ---
-  const mx = $("#matrix"), mctx = mx && mx.getContext("2d");
-  let cols = [], MW, MH;
-  function mresize(){ if(mx){ MW=mx.width=innerWidth; MH=mx.height=innerHeight; cols=Array(Math.floor(MW/14)).fill(0);} }
-  function rain(){
-    if(!mctx) return;
-    mctx.fillStyle="rgba(5,8,11,.09)"; mctx.fillRect(0,0,MW,MH);
-    mctx.fillStyle="#39ff8b"; mctx.font="13px monospace";
-    cols.forEach((y,i)=>{
-      const ch=String.fromCharCode(0x30A0+Math.random()*96);
-      mctx.fillText(ch,i*14,y*14);
-      cols[i]= y*14>MH && Math.random()>0.975 ? 0 : y+1;
-    });
+  // --- whimsy layer 2: wandering bees ---
+  const mx = $("#bees"), mctx = mx && mx.getContext("2d");
+  let bees = [], MW, MH;
+  function mresize(){
+    if(!mx) return;
+    MW=mx.width=innerWidth; MH=mx.height=innerHeight;
+    bees = Array.from({length:6},()=>({x:Math.random()*MW, y:Math.random()*MH,
+      a:Math.random()*6.28, v:0.6+Math.random()*0.7, wob:Math.random()*6.28}));
   }
-  if(mx){ addEventListener("resize",mresize); mresize(); setInterval(rain,60); }
+  function buzz(){
+    if(!mctx) return;
+    mctx.clearRect(0,0,MW,MH);
+    mctx.font="16px serif"; mctx.globalAlpha=0.8;
+    bees.forEach(b=>{
+      b.wob+=0.15; b.a+=(Math.random()-0.5)*0.2;
+      b.x+=Math.cos(b.a)*b.v; b.y+=Math.sin(b.a)*b.v+Math.sin(b.wob)*0.6;
+      if(b.x<-20)b.x=MW+18; if(b.x>MW+20)b.x=-18;
+      if(b.y<-20)b.y=MH+18; if(b.y>MH+20)b.y=-18;
+      mctx.save(); mctx.translate(b.x,b.y);
+      if(Math.cos(b.a)<0) mctx.scale(-1,1);
+      mctx.fillText("🐝",-8,6); mctx.restore();
+    });
+    mctx.globalAlpha=1;
+    requestAnimationFrame(buzz);
+  }
+  if(mx){ addEventListener("resize",mresize); mresize(); buzz(); }
 
   // --- system HUD meters (cosmetic, GatesOS vibe) ---
   function meters(){
@@ -226,17 +259,18 @@
   // --- auto-typing console: types real honeypot events (GatesOS 5th element) ---
   const term = $("#term");
   const boot = [
-    { c:"p",  s:"$ ./watch --live" },
-    { c:"",   s:"[ok] honeyd: listening :80 :443" },
-    { c:"",   s:"[ok] cowrie: ssh trap armed" },
-    { c:"am", s:"[..] awaiting ingress…" },
+    { c:"p",  s:"$ ./tend --garden" },
+    { c:"",   s:"[ok] honey jars set out on the porch :80 :443" },
+    { c:"",   s:"[ok] ssh trap humming · telnet twine tied · vnc window cracked" },
+    { c:"",   s:"[ok] jam jars canaried · tripwire fairies awake" },
+    { c:"am", s:"[..] waiting for bears…" },
   ];
   let termLines = [], seen = new Set(), typing = false, bootDone = false, bootIdx = 0;
 
   function eventLine(h){
     if (h.ip === "127.0.0.1") return null;              // skip local self-tests
     const cls = h.attack ? (h.sev === "high" ? "hi" : "am") : "";
-    const mark = h.attack ? (h.sev === "high" ? "[hit]" : "[flag]") : "[log]";
+    const mark = h.attack ? (h.sev === "high" ? "[snap!]" : "[sniff]") : "[step]";
     return { c: cls, s: `${mark} ${h.ip} ${h.method} ${h.path} — ${h.label}` };
   }
   function key(h){ return h.t + h.ip + h.path; }
@@ -371,10 +405,10 @@
     gx.clearRect(0,0,gW,gH);
     gx.save(); gx.translate(gW/2,gH/2);
     // limb glow
-    gx.beginPath(); gx.arc(0,0,gR,0,7); gx.strokeStyle="rgba(52,255,102,.35)"; gx.lineWidth=1.2; gx.stroke();
-    gx.fillStyle="rgba(52,255,102,.03)"; gx.fill();
+    gx.beginPath(); gx.arc(0,0,gR,0,7); gx.strokeStyle="rgba(217,142,4,.45)"; gx.lineWidth=1.2; gx.stroke();
+    gx.fillStyle="rgba(242,193,78,.06)"; gx.fill();
     // graticule: latitude rings
-    gx.strokeStyle="rgba(52,255,102,.14)"; gx.lineWidth=.7;
+    gx.strokeStyle="rgba(217,142,4,.18)"; gx.lineWidth=.7;
     for(let la=-60; la<=60; la+=30){
       gx.beginPath(); let first=true;
       for(let lo=-180; lo<=180; lo+=6){
@@ -397,7 +431,7 @@
     activePts.forEach(pt=>{
       const p=project(pt.lat,pt.lng,gR);
       const back = p.z < 0;                    // far hemisphere
-      const col = pt.hi ? "#ff4d5e" : "#34ff66";
+      const col = pt.hi ? "#d9486a" : "#d98e04";
       if(back){
         // faint static dot on the back, no ping
         gx.beginPath(); gx.arc(p.x,p.y,Math.min(1.5+pt.n*0.25,3.5),0,7);

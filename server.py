@@ -41,7 +41,29 @@ SIGS = [
     (re.compile(r"(sqlmap|nikto|nmap|masscan|zgrab|nuclei|hydra)", re.I), "Scanner tool signature", "med", 9000010, "attempted-recon", 2),
     (re.compile(r"/(actuator|solr|struts|jenkins|\.php)", re.I), "App-framework probe", "med", 9000011, "attempted-recon", 2),
     (re.compile(r"/(login|admin|manager|owa)\b", re.I), "Admin login probe", "low", 9000012, "attempted-recon", 3),
+    (re.compile(r"/(graphql|\.npmrc|docker-compose|\.dockerenv|kube)", re.I), "Dev/cloud secret probe", "high", 9000013, "web-application-attack", 1),
+    (re.compile(r"(log4j|jndi:|\$\{jndi)", re.I), "Log4Shell exploit attempt", "high", 9000014, "web-application-attack", 1),
+    (re.compile(r"/(\.vscode|\.idea|\.DS_Store|\.htpasswd|web\.config)", re.I), "IDE/config leak probe", "med", 9000015, "attempted-recon", 2),
 ]
+
+# ---- User-agent disguise fingerprints (for the 'top disguises' panel) ----
+def ua_label(ua):
+    if not ua:
+        return "(no user-agent)"
+    u = ua.lower()
+    for needle, name in [
+        ("sqlmap", "sqlmap 🦪"), ("nikto", "nikto"), ("nmap", "nmap"),
+        ("masscan", "masscan"), ("zgrab", "zgrab"), ("nuclei", "nuclei"),
+        ("hydra", "hydra"), ("censys", "censys scanner"), ("shodan", "shodan"),
+        ("curl", "curl"), ("wget", "wget"), ("python", "python-bot"),
+        ("go-http", "go-bot"), ("okhttp", "okhttp"), ("libwww", "libwww-perl"),
+        ("httpx", "httpx"), ("bot", "generic bot"),
+        ("headlesschrome", "headless chrome"), ("chrome", "fake browser (chrome)"),
+        ("firefox", "fake browser (firefox)"), ("safari", "fake browser (safari)"),
+    ]:
+        if needle in u:
+            return name
+    return (ua[:32] + "…") if len(ua) > 33 else ua
 
 LOCK = threading.Lock()
 HITS = deque(maxlen=500)          # recent hits (newest first)
@@ -52,6 +74,7 @@ BY_NET = Counter()               # count by /24
 BY_TYPE = Counter()
 BY_CLASS = Counter()             # Suricata classtype breakdown
 BY_GEO = Counter()               # count by country
+BY_UA = Counter()                # count by (normalized) user-agent / disguise
 EVE = deque(maxlen=500)          # Suricata EVE-JSON alert records
 
 # ---- GeoIP: free lookup w/ in-memory cache + graceful fallback ----
@@ -508,6 +531,7 @@ class H(BaseHTTPRequestHandler):
             EPS_TIMES.append(time.time())
             if geo["cc"] != "??":
                 BY_GEO[geo["country"]] += 1
+            BY_UA[ua_label(ua)] += 1
             if sig:
                 SEV[sig["sevnum"]] += 1
             if sig:
@@ -572,6 +596,7 @@ class H(BaseHTTPRequestHandler):
                     "top": BY_TYPE.most_common(6),
                     "sources": BY_NET.most_common(8),
                     "geo": BY_GEO.most_common(8),
+                    "uas": BY_UA.most_common(8),
                     "classtypes": BY_CLASS.most_common(6),
                     "honeytokens": list(HONEYTOKEN_HITS)[:10],
                     "ddos": dict(DDOS),
@@ -695,6 +720,47 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, "<h1>Apache Server Status</h1>"
                 "<pre>Total accesses: 184213 - Total Traffic: 4.2 GB\n"
                 "CPU Usage: u2.1 s.4\n1 requests currently being processed</pre>")
+        # fake robots.txt that "leaks" juicy disallowed paths (curiosity bait)
+        if p.endswith("/robots.txt"):
+            self._record()
+            return self._send(200,
+                "User-agent: *\nDisallow: /admin/\nDisallow: /backup/\n"
+                "Disallow: /.env\nDisallow: /old-site/\nDisallow: /internal/\n"
+                "Disallow: /db-dump.sql\nDisallow: /wp-config.php.bak\n", "text/plain")
+        # fake wp-config backup (classic loot)
+        if p.endswith("/wp-config.php") or p.endswith("/wp-config.php.bak") or p.endswith("/.wp-config.php.swp"):
+            self._record()
+            return self._send(200,
+                "<?php\ndefine('DB_NAME','lulz_wp');\ndefine('DB_USER','wpadmin');\n"
+                f"define('DB_PASSWORD','{HONEYTOKENS['api_key']}');\n"
+                f"define('DB_HOST','{CANARY_DNS}');\n"
+                f"define('AUTH_KEY','{HONEYTOKENS['session']}');\n?>\n", "text/plain")
+        # fake docker-compose / .npmrc / cloud config (devops decoys)
+        if p.endswith("/docker-compose.yml") or p.endswith("/docker-compose.yaml"):
+            self._record()
+            return self._send(200,
+                "version: '3'\nservices:\n  db:\n    image: mysql:8\n"
+                f"    environment:\n      MYSQL_ROOT_PASSWORD: {HONEYTOKENS['api_key']}\n"
+                f"      MYSQL_DATABASE: lulz_prod\n    ports: ['3306:3306']\n", "text/plain")
+        if p.endswith("/.npmrc") or p.endswith("/.pypirc"):
+            self._record()
+            return self._send(200,
+                f"//registry.npmjs.org/:_authToken={HONEYTOKENS['api_key']}\n"
+                f"registry=https://{CANARY_DNS}/\n", "text/plain")
+        # fake GraphQL introspection bait
+        if p.endswith("/graphql") or p.endswith("/graphiql"):
+            self._record()
+            return self._send(200, json.dumps({"data": {"__schema": {"queryType":
+                {"name": "Query"}, "types": [{"name": "User"}, {"name": "AdminToken"}]}}}),
+                "application/json")
+        # fake Spring actuator env (secret-leak bait, canaried)
+        if "/actuator" in p:
+            self._record()
+            return self._send(200, json.dumps({"activeProfiles": ["prod"],
+                "propertySources": [{"name": "applicationConfig", "properties": {
+                    "aws.accessKey": {"value": CANARY_AWS_KEY},
+                    "spring.datasource.url": {"value": f"jdbc:mysql://{CANARY_DNS}/lulz"}}}]}),
+                "application/json")
         # fake API / swagger doc
         if p.endswith("/api") or p.endswith("/api/v1") or p.endswith("/swagger.json") or p.endswith("/openapi.json"):
             self._record()
@@ -796,7 +862,7 @@ def save_state():
             DATA_FILE.write_text(json.dumps({
                 "stats": {"total": STATS["total"], "attacks": STATS["attacks"]},
                 "by_type": dict(BY_TYPE), "by_class": dict(BY_CLASS),
-                "by_geo": dict(BY_GEO), "by_net": dict(BY_NET),
+                "by_geo": dict(BY_GEO), "by_net": dict(BY_NET), "by_ua": dict(BY_UA),
                 "sev": SEV, "hits": list(HITS)[:200], "eve": list(EVE)[:200],
                 "honeytokens": list(HONEYTOKEN_HITS),
                 "creds": list(CAPTURED_CREDS), "cred_stats": dict(CRED_STATS),
@@ -813,6 +879,7 @@ def load_state():
         STATS["total"] = d["stats"]["total"]; STATS["attacks"] = d["stats"]["attacks"]
         BY_TYPE.update(d.get("by_type", {})); BY_CLASS.update(d.get("by_class", {}))
         BY_GEO.update(d.get("by_geo", {})); BY_NET.update(d.get("by_net", {}))
+        BY_UA.update(d.get("by_ua", {}))
         for k, v in d.get("sev", {}).items(): SEV[int(k)] = v
         for h in reversed(d.get("hits", [])): HITS.appendleft(h)
         for e in reversed(d.get("eve", [])): EVE.appendleft(e)
@@ -860,11 +927,15 @@ def record_tcp(proto, ip, detail, sid, sev="med", sevnum=2):
 #   mode 'line' = send banner, read a few lines, log creds/cmds
 #   mode 'blob' = send banner, read one blob, log hex/ascii
 TCP_PROTOS = {
-    "FTP":   (21,   9000080, b"220 (vsFTPd 3.0.3)\r\n", "line"),
-    "SMTP":  (25,   9000081, b"220 mail.lulz.local ESMTP Postfix\r\n", "line"),
-    "REDIS": (6379, 9000082, b"", "line"),      # redis: no banner; attacker sends cmds
-    "MYSQL": (3306, 9000083, None, "blob"),     # send a fake MySQL greeting packet
-    "RDP":   (3389, 9000084, b"", "blob"),      # log the connection attempt
+    "FTP":    (21,   9000080, b"220 (vsFTPd 3.0.3)\r\n", "line"),
+    "TELNET": (23,   9000085, b"\xff\xfb\x01\xff\xfb\x03login: ", "line"),  # IAC WILL ECHO/SGA
+    "SMTP":   (25,   9000081, b"220 mail.lulz.local ESMTP Postfix\r\n", "line"),
+    "REDIS":  (6379, 9000082, b"", "line"),      # redis: no banner; attacker sends cmds
+    "MYSQL":  (3306, 9000083, None, "blob"),     # send a fake MySQL greeting packet
+    "RDP":    (3389, 9000084, b"", "blob"),      # log the connection attempt
+    "VNC":    (5900, 9000086, b"RFB 003.008\n", "blob"),   # VNC handshake banner
+    "MEMCACHED": (11211, 9000087, b"", "line"),  # memcached: attacker sends 'stats'/'version'
+    "MONGODB":   (27017, 9000088, None, "blob"), # mongo wire: log the probe
 }
 
 def _mysql_greeting():
@@ -907,9 +978,11 @@ def _handle_tcp(proto, sid, banner, mode, conn, ip):
                 data = conn.recv(256)
                 if not data: break
                 got.append(data.decode("latin1", "replace").strip())
-                # FTP/SMTP: politely prompt so they send creds
+                # politely prompt so they keep talking / send creds
                 if proto == "FTP": conn.sendall(b"331 password required\r\n")
                 elif proto == "SMTP": conn.sendall(b"250 OK\r\n")
+                elif proto == "TELNET": conn.sendall(b"Password: ")
+                elif proto == "MEMCACHED": conn.sendall(b"STAT version 1.6.9\r\nEND\r\n")
             detail = " | ".join(x for x in got if x)[:120] or "connect"
         else:  # blob
             data = conn.recv(512)

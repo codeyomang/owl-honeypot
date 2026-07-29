@@ -3,25 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>🕸 Lulz Honeypot — Live Attack Feed</title>
+<title>🍯 The Honey Jar — Lulz Honeypot</title>
 <link rel="stylesheet" href="style.css">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%F0%9F%95%B8%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%F0%9F%8D%AF%3C/text%3E%3C/svg%3E">
 </head>
 <body>
-<canvas id="matrix" aria-hidden="true"></canvas>
-<canvas id="grid" aria-hidden="true"></canvas>
-<div id="scanlines" aria-hidden="true"></div>
+<canvas id="clouds" aria-hidden="true"></canvas>
+<canvas id="bees" aria-hidden="true"></canvas>
 
 <header class="bar">
   <div class="topline">
-    <div class="brand">⬢ <b>LULZ</b><span class="os">HONEYPOT</span>
+    <div class="brand">🍯 <b>LULZ</b><span class="os">HONEY JAR</span>
       <span class="live" id="live">● LIVE</span></div>
     <div class="hud">
-      <span class="h">EPS <b id="eps">0</b></span>
-      <span class="h">THREATS <b id="hthreats">0</b></span>
-      <span class="h">SOURCES <b id="hsources">0</b></span>
-      <span class="h">FEEDS <b id="hfeeds">--</b></span>
-      <span class="h tl" id="threatlvl">THREAT LEVEL —</span>
+      <span class="h">🐝 EPS <b id="eps">0</b></span>
+      <span class="h">🪤 SNAPS <b id="hthreats">0</b></span>
+      <span class="h">🐻 BEARS <b id="hsources">0</b></span>
+      <span class="h">🪶 TRAPS <b id="hfeeds">--</b></span>
+      <span class="h tl" id="threatlvl">HIVE MOOD —</span>
       <span class="h clk" id="clock">--:--:--</span>
     </div>
   </div>
@@ -30,13 +29,13 @@
 <div class="ddosbar" id="ddosbar" hidden></div>
 
 <section class="strip">
-  <div class="chip"><b id="total">0</b> hits</div>
-  <div class="chip crit"><b id="attacks">0</b> attacks</div>
-  <div class="chip"><b id="sources">0</b> nets</div>
+  <div class="chip"><b id="total">0</b> visitors</div>
+  <div class="chip crit"><b id="attacks">0</b> naughty</div>
+  <div class="chip"><b id="sources">0</b> burrows</div>
   <div class="chip"><b id="countries">0</b> countries</div>
-  <div class="chip"><b id="uptime">0s</b> up</div>
+  <div class="chip"><b id="uptime">0s</b> awake</div>
   <div class="stripsev">
-    <span class="sevlbl">SEV</span>
+    <span class="sevlbl">MISCHIEF</span>
     <div class="sevmix" id="sevmix">
       <div class="seg high" id="segHigh" title="high"></div>
       <div class="seg med"  id="segMed"  title="medium"></div>
@@ -51,19 +50,19 @@
   <!-- LEFT: map + console -->
   <div class="col colL">
     <div class="panel mappanel">
-      <div class="ph">▣ global attack globe <span class="hint" id="mapcount">0 sources</span>
+      <div class="ph">🌍 where the bears come from <span class="hint" id="mapcount">0 sources</span>
         <span class="viewtoggle"><button id="vGlobe" class="on">globe</button><button id="vMap">map</button></span></div>
       <div class="mapwrap">
-        <canvas id="globe" class="globecv" aria-label="3D attack globe"></canvas>
+        <canvas id="globe" class="globecv" aria-label="attack globe"></canvas>
         <svg class="worldsvg" id="worldsvg" viewBox="0 0 360 180" preserveAspectRatio="xMidYMid meet" aria-label="attack sources" style="display:none">
           <rect x="0" y="0" width="360" height="180" fill="none"/>
-          <g id="landmass" opacity="0.28"></g>
+          <g id="landmass" opacity="0.25"></g>
           <g id="dots"></g>
         </svg>
       </div>
     </div>
     <div class="panel term-panel">
-      <div class="ph">▣ console <span class="hint">./watch --live</span></div>
+      <div class="ph">🐝 hive log <span class="hint">the bees narrate</span></div>
       <div class="term" id="term" aria-live="polite"></div>
     </div>
   </div>
@@ -71,53 +70,83 @@
   <!-- CENTER: live feed -->
   <div class="col colC">
     <div class="panel feed">
-      <div class="ph">▣ live feed <span class="hint">newest first</span></div>
-      <div class="rows" id="rows"><div class="empty">waiting for traffic… (probes usually arrive within minutes of going public)</div></div>
+      <div class="ph">🍯 fresh drips — live feed <span class="hint">newest first</span></div>
+      <div class="rows" id="rows"><div class="empty">the jar is quiet… bears usually wander in within minutes of going public 🐾</div></div>
     </div>
     <div class="panel suri">
-      <div class="ph">▣ suricata / IDS <span class="hint" id="suricount">0 alerts</span>
+      <div class="ph">🧚 tripwire fairies — IDS <span class="hint" id="suricount">0 alerts</span>
         <span class="suri-actions"><a href="/api/eve" download="eve.json">⬇ eve</a><a href="/lulz-honeypot.rules" download>⬇ rules</a></span></div>
-      <div class="everows" id="everows"><div class="empty">no alerts yet</div></div>
+      <div class="everows" id="everows"><div class="empty">no tripwires tickled yet ✨</div></div>
     </div>
   </div>
 
   <!-- RIGHT: intel panels -->
   <div class="col colR">
     <div class="panel creds">
-      <div class="ph">🔑 captured credentials <span class="hint" id="credcount">0</span></div>
-      <div class="credrows" id="credrows"><div class="empty">no creds captured — fake logins at /admin /router /webmail</div></div>
+      <div class="ph">🔑 passwords bears whispered <span class="hint" id="credcount">0</span></div>
+      <div class="credrows" id="credrows"><div class="empty">no secrets whispered — fake doors at /admin /router /webmail 🚪</div></div>
     </div>
     <div class="panel c2">
-      <div class="ph">☢ c2 / botnet iocs <span class="hint" id="c2count">0</span></div>
-      <div class="c2rows" id="c2rows"><div class="empty">no C2 indicators seen yet</div></div>
+      <div class="ph">🐻‍❄️ bear dens — C2 / botnet <span class="hint" id="c2count">0</span></div>
+      <div class="c2rows" id="c2rows"><div class="empty">no dens discovered yet</div></div>
     </div>
     <div class="panel prof">
-      <div class="ph">🎯 attacker profiles <span class="hint" id="profcount">0</span>
+      <div class="ph">🐻 bear profiles <span class="hint" id="profcount">0</span>
         <span class="suri-actions"><a href="/api/feed-export.csv" download="threatfeed.csv">⬇ csv</a><a href="/api/stix" download="iocs.stix.json">⬇ stix</a></span></div>
-      <div class="profrows" id="profrows"><div class="empty">building attacker profiles…</div></div>
+      <div class="profrows" id="profrows"><div class="empty">sketching bear portraits…</div></div>
     </div>
     <div class="panel token">
-      <div class="ph">🍯 honeytokens <span class="hint">canary bait</span></div>
-      <div class="tokrows" id="tokrows"><div class="empty">no bait triggered — decoy creds in /.env &amp; /admin</div></div>
+      <div class="ph">🫙 jam jars — honeytokens <span class="hint">canary bait</span></div>
+      <div class="tokrows" id="tokrows"><div class="empty">no jars opened — decoy jam in /.env &amp; /admin 🍓</div></div>
+    </div>
+    <div class="panel">
+      <div class="ph">🗺️ trap map <span class="hint">live decoys on this garden</span></div>
+      <ul class="traps">
+        <li><code>/.env</code> <code>/.aws</code> <code>/wp-config.php</code> <span>secret-file bait (canaried)</span></li>
+        <li><code>/admin</code> <code>/router</code> <code>/webmail</code> <span>fake login doors</span></li>
+        <li><code>/.git</code> <code>/backup.sql</code> <code>/id_rsa</code> <span>fake loot</span></li>
+        <li><code>/robots.txt</code> <code>/graphql</code> <code>/actuator</code> <span>curiosity bait</span></li>
+        <li><code>/docker-compose.yml</code> <code>/.npmrc</code> <span>devops decoys</span></li>
+        <li><code>:21</code> <code>:23</code> <code>:25</code> <code>:3306</code> <code>:3389</code> <span>FTP · Telnet · SMTP · MySQL · RDP</span></li>
+        <li><code>:6379</code> <code>:5900</code> <code>:11211</code> <code>:27017</code> <span>Redis · VNC · Memcached · MongoDB</span></li>
+        <li><code>:22</code> <span>SSH (cowrie) — full fake shell</span></li>
+      </ul>
     </div>
     <div class="panel">
       <div class="ph">🌍 top countries</div>
       <ul class="toplist" id="geolist"><li class="empty">none yet</li></ul>
     </div>
     <div class="panel">
-      <div class="ph">▣ top attack types</div>
+      <div class="ph">⚔️ favorite tricks</div>
       <ul class="toplist" id="toptypes"><li class="empty">none yet</li></ul>
     </div>
     <div class="panel">
-      <div class="ph">▣ system</div>
+      <div class="ph">🧢 top disguises <span class="hint">user-agents</span></div>
+      <ul class="toplist" id="ualist"><li class="empty">none yet</li></ul>
+    </div>
+    <div class="panel">
+      <div class="ph">🌡 garden vitals</div>
       <ul class="procs">
         <li><span>[987]</span> sshd</li><li><span>[1142]</span> caddy</li>
         <li><span>[1190]</span> honeyd</li><li><span>[1245]</span> cowrie</li>
       </ul>
       <div class="meters">
-        <div class="meter"><label>load</label><div class="mbar"><i id="mload"></i></div><span class="mv" id="vload">0.00</span></div>
-        <div class="meter"><label>mem</label><div class="mbar"><i id="mmem"></i></div><span class="mv" id="vmem">--</span></div>
-        <div class="meter"><label>net</label><div class="mbar"><i id="mnet"></i></div><span class="mv" id="vnet">--</span></div>
+        <div class="meter"><label>sunshine</label><div class="mbar"><i id="mload"></i></div><span class="mv" id="vload">0.00</span></div>
+        <div class="meter"><label>honey</label><div class="mbar"><i id="mmem"></i></div><span class="mv" id="vmem">--</span></div>
+        <div class="meter"><label>breeze</label><div class="mbar"><i id="mnet"></i></div><span class="mv" id="vnet">--</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph">❓ what is this place?</div>
+      <div class="about">
+        <p>This is a <b>honeypot</b> — a decoy server dressed up as an easy target.
+        Every visit you see here is a <b>real</b> probe from the public internet:
+        bots and attackers scanning for weak sites to break into.</p>
+        <p>The traps hand out <b>fake secrets</b> (canary tokens). If a bear ever
+        <i>uses</i> one, we get an alarm. Meanwhile every paw print is logged,
+        geo-located, and enriched into attacker profiles you can export
+        (CSV / STIX / Suricata EVE) for firewalls and SIEMs.</p>
+        <p class="tiny">Nothing here is real. Except the bears. The bears are very real. 🐻</p>
       </div>
     </div>
   </div>

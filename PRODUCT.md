@@ -12,7 +12,13 @@ engine **already does**, and the real **gaps** between "cool tool" and
 - **Payload intel** — file-hash lookups: MalwareBazaar (free) + VirusTotal (key)
 - **C2/botnet IOCs** — payload URLs + C2 IPs extracted from attacker commands
 - **Credential capture** — creds tried against fake admin/router/webmail portals
-- **Multi-protocol capture** — HTTP, SSH, Telnet, FTP, SMTP, Redis, MySQL, RDP
+- **Multi-protocol capture** — HTTP, SSH, Telnet, FTP, SMTP, Redis, MySQL, RDP,
+  VNC, Memcached, MongoDB
+- **Web decoy surface** — canaried bait for `/.env`, `/.aws`, `/.git`,
+  `/wp-config.php`, `/docker-compose.yml`, `/.npmrc`, `/graphql`,
+  `/actuator/env`, `/robots.txt`, plus Log4Shell + IDE-leak signatures
+- **User-agent fingerprinting** — rolls attacker disguises (sqlmap, nuclei,
+  fake browsers, bots) into a live "top disguises" breakdown
 - **Exports** — `/api/profiles` (JSON), `/api/feed-export.csv`, `/api/stix`
   (STIX 2.1 bundle for SIEM/TIP ingestion), `/api/eve` (Suricata EVE-JSON)
 
