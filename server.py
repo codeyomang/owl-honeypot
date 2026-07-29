@@ -13,7 +13,7 @@ Run:  python3 server.py [port]            (default 8096)
 Env:  HONEYPOT_PORT, HONEYPOT_HOST, HONEYPOT_DATA (persistence file),
       GEOIP=off  to disable outbound geo lookups.
 """
-import json, os, re, sys, time, threading, html, secrets, urllib.request, urllib.parse, atexit, signal
+import json, os, re, sys, time, threading, html, secrets, hmac, urllib.request, urllib.parse, atexit, signal
 from collections import deque, Counter, defaultdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -815,7 +815,8 @@ class H(BaseHTTPRequestHandler):
         if self.path.split("?", 1)[0] == "/api/ingest":
             n = int(self.headers.get("Content-Length", 0) or 0)
             raw = self.rfile.read(min(n, 65536)).decode("utf-8", "replace")
-            if not INGEST_TOKEN or self.headers.get("X-Ingest-Token") != INGEST_TOKEN:
+            _tok = self.headers.get("X-Ingest-Token", "")
+            if not INGEST_TOKEN or not hmac.compare_digest(_tok, INGEST_TOKEN):
                 return self._send(403, '{"error":"forbidden"}', "application/json")
             cnt = 0
             for line in raw.splitlines():
