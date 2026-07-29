@@ -491,6 +491,129 @@
     if (gcv && (!gH || gcv.height < 60)) gsize();
   };
 
+  // ============ ITCHY & SCRATCHY: cat-vs-mouse toon ============
+  // Original hand-drawn stick-toon (no copyrighted art). The mouse creeps
+  // toward the cheese-trap; on a fresh 'bust' (attack count ticks up) the
+  // cat springs, a mallet WHACKs, stars fly, and a speech bubble pops.
+  (function toonInit(){
+    const tc = $("#toon"), tx = tc && tc.getContext("2d");
+    const bubble = $("#toonbubble"), scoreEl = $("#toonscore");
+    if(!tc || !tx) return;
+    let TW, TH, dpr = Math.min(devicePixelRatio||1, 2);
+    function tsize(){
+      const w = tc.clientWidth || 300, h = 120;
+      TW = tc.width = w*dpr; TH = tc.height = h*dpr;
+      tx.setTransform(dpr,0,0,dpr,0,0);
+    }
+    addEventListener("resize", tsize); tsize();
+
+    let lastAttacks = null, busts = 0;
+    let mouseX = 0.15, state = "creep", tmr = 0, whackX = 0.6, stars = [];
+    const BUBBLES = ["WHACK!","BONK!","POW!","GOTCHA!","SPLAT!","KAPOW!","NO $200 4 U!"];
+
+    function showBubble(txt){
+      if(!bubble) return;
+      bubble.textContent = txt; bubble.classList.add("show");
+      clearTimeout(bubble._t); bubble._t = setTimeout(()=>bubble.classList.remove("show"), 900);
+    }
+    function triggerWhack(){
+      state = "whack"; tmr = 0; whackX = mouseX;
+      stars = Array.from({length:8},()=>({a:Math.random()*6.28, r:0, v:1.5+Math.random()*2}));
+      showBubble(BUBBLES[Math.floor(Math.random()*BUBBLES.length)]);
+    }
+
+    // hand-drawn parts (all relative to canvas w/h, ink outline)
+    function ink(w){ tx.strokeStyle="#1c1c1c"; tx.lineWidth=w||2.5; tx.lineJoin="round"; tx.lineCap="round"; }
+    function drawCheese(w,h){
+      const x=w*0.68, y=h*0.78;
+      tx.fillStyle="#e8c766"; ink(2.5);
+      tx.beginPath(); tx.moveTo(x,y); tx.lineTo(x+22,y-14); tx.lineTo(x+22,y); tx.closePath();
+      tx.fill(); tx.stroke();
+      tx.fillStyle="#c9a94a";
+      for(const [dx,dy] of [[6,-2],[13,-6],[10,-9]]){ tx.beginPath(); tx.arc(x+dx,y+dy,1.6,0,7); tx.fill(); }
+    }
+    function drawMouse(cx,cy,squash){
+      const s=squash||1;
+      tx.save(); tx.translate(cx,cy);
+      tx.fillStyle="#9aa0a6"; ink(2.5);
+      // body
+      tx.beginPath(); tx.ellipse(0,0,13,9*s,0,0,7); tx.fill(); tx.stroke();
+      // ear
+      tx.beginPath(); tx.arc(-6,-8*s,4,0,7); tx.fill(); tx.stroke();
+      // eye
+      tx.fillStyle="#1c1c1c"; tx.beginPath(); tx.arc(-9,-2,1.4,0,7); tx.fill();
+      // tail
+      ink(2); tx.beginPath(); tx.moveTo(12,2); tx.quadraticCurveTo(24,-4,20,6); tx.stroke();
+      tx.restore();
+    }
+    function drawCat(cx,cy,arm){
+      tx.save(); tx.translate(cx,cy);
+      tx.fillStyle="#8f78c4"; ink(2.5);
+      // body
+      tx.beginPath(); tx.ellipse(0,0,17,14,0,0,7); tx.fill(); tx.stroke();
+      // ears
+      for(const ex of [-9,9]){ tx.beginPath(); tx.moveTo(ex,-12); tx.lineTo(ex+(ex<0?-2:2),-22); tx.lineTo(ex+7*(ex<0?1:-1)*-1,-12); tx.closePath(); tx.fill(); tx.stroke(); }
+      // eyes
+      tx.fillStyle="#fff"; tx.beginPath(); tx.arc(-6,-4,3.2,0,7); tx.arc(6,-4,3.2,0,7); tx.fill(); tx.stroke();
+      tx.fillStyle="#1c1c1c"; tx.beginPath(); tx.arc(-5,-4,1.4,0,7); tx.arc(7,-4,1.4,0,7); tx.fill();
+      // grin
+      ink(2); tx.beginPath(); tx.arc(0,2,6,0.1,Math.PI-0.1); tx.stroke();
+      // mallet arm (swings with 'arm' 0..1)
+      const ang = -0.9 + arm*1.6;
+      tx.save(); tx.translate(14,-2); tx.rotate(ang); ink(3);
+      tx.beginPath(); tx.moveTo(0,0); tx.lineTo(24,0); tx.stroke();
+      tx.fillStyle="#df8a52"; tx.fillRect(22,-7,12,14); tx.strokeRect(22,-7,12,14);
+      tx.restore();
+      tx.restore();
+    }
+
+    function frame(){
+      const w = tc.clientWidth || 300, h = 120;
+      tx.clearRect(0,0,w,h);
+      // ground line
+      ink(2); tx.beginPath(); tx.moveTo(8,h-14); tx.lineTo(w-8,h-14); tx.stroke();
+      drawCheese(w,h);
+      const groundY = h-22;
+      const cheeseX = w*0.68;
+
+      if(state==="creep"){
+        mouseX += 0.0016;
+        if(mouseX > 0.60){ mouseX = 0.60; }        // stop at the cheese, wait for a bust
+        drawCat(w*0.86, groundY-2, 0);
+        drawMouse(w*mouseX, groundY, 1);
+      } else if(state==="whack"){
+        tmr += 1;
+        const arm = Math.min(tmr/8, 1);
+        drawCat(w*0.86, groundY-2, arm);
+        if(tmr < 10){ drawMouse(w*whackX, groundY, 1); }
+        else {
+          // squashed + stars
+          drawMouse(w*whackX, groundY+4, 0.4);
+          stars.forEach(st=>{ st.r += st.v;
+            const sx=w*whackX+Math.cos(st.a)*st.r, sy=groundY-6+Math.sin(st.a)*st.r;
+            tx.fillStyle="#e8c766"; tx.font="12px serif"; tx.fillText("✦",sx,sy);
+          });
+        }
+        if(tmr > 46){ state="creep"; mouseX=0.12; }   // reset: new mouse runs in
+      }
+      requestAnimationFrame(frame);
+    }
+    frame();
+
+    // hook into the data render: when total attacks rises -> a bust happened
+    const _tr = render;
+    render = function(d){
+      _tr(d);
+      const a = d.stats ? d.stats.attacks : 0;
+      if(lastAttacks === null){ lastAttacks = a; }
+      else if(a > lastAttacks){
+        busts += (a - lastAttacks); lastAttacks = a;
+        if(scoreEl) scoreEl.textContent = "busts: " + busts.toLocaleString();
+        if(state !== "whack") triggerWhack();
+      }
+    };
+  })();
+
   // re-poll immediately when the tab regains focus (backgrounded tabs throttle timers)
   document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
   addEventListener("focus", poll);

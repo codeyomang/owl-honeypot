@@ -106,7 +106,7 @@ body>*:not(#bees):not(#clouds){position:relative;z-index:1}
   padding:14px 18px;min-height:0;overflow:hidden}
 .col{display:grid;gap:14px;min-height:0;align-content:start;grid-auto-rows:min-content}
 .colL{grid-template-rows:auto 1fr}
-.colC{grid-template-rows:1fr auto}
+.colC{grid-template-rows:auto 1fr auto}
 .colR{overflow-y:auto}
 @media(max-width:900px){
   html,body{overflow:auto}
@@ -222,3 +222,17 @@ body>*:not(#bees):not(#clouds){position:relative;z-index:1}
 .about .tiny{color:var(--dim);font-size:12px;font-family:var(--hand)}
 
 footer{text-align:center;color:#111;font-size:14px;padding:22px;font-family:var(--hand)}
+
+/* Itchy & Scratchy cat-vs-mouse toon panel */
+.toon .ph{background:var(--pop-orange);color:#1c1c1c}
+.toonwrap{position:relative;background:
+  repeating-linear-gradient(90deg,#fbf7ee 0 40px,#f3ecdb 40px 80px);
+  border-bottom-left-radius:11px;border-bottom-right-radius:11px}
+.toonwrap canvas{display:block;width:100%;height:120px}
+.toonbubble{position:absolute;top:8px;left:50%;transform:translateX(-50%) scale(0);
+  background:#fff;border:2.5px solid #1c1c1c;border-radius:12px;padding:3px 10px;
+  font-family:var(--hand);font-size:15px;color:#1c1c1c;white-space:nowrap;
+  box-shadow:var(--shadow-sm);transition:transform .15s ease-out;pointer-events:none}
+.toonbubble.show{transform:translateX(-50%) scale(1)}
+.toonbubble::after{content:"";position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);
+  border:7px solid transparent;border-top-color:#1c1c1c}
