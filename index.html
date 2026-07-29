@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>🍯 The Honey Jar — Lulz Honeypot</title>
+<title>🎩 The Money Trap — Lulz Honeypot</title>
 <link rel="stylesheet" href="style.css">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%F0%9F%8D%AF%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%F0%9F%8E%A9%3C/text%3E%3C/svg%3E">
 </head>
 <body>
 <canvas id="clouds" aria-hidden="true"></canvas>
@@ -13,14 +13,14 @@
 
 <header class="bar">
   <div class="topline">
-    <div class="brand">🍯 <b>LULZ</b><span class="os">HONEY JAR</span>
+    <div class="brand">🍯 <b>LULZ</b><span class="os">MONEY TRAP</span>
       <span class="live" id="live">● LIVE</span></div>
     <div class="hud">
-      <span class="h">🐝 EPS <b id="eps">0</b></span>
-      <span class="h">🪤 SNAPS <b id="hthreats">0</b></span>
-      <span class="h">🐻 BEARS <b id="hsources">0</b></span>
-      <span class="h">🪶 TRAPS <b id="hfeeds">--</b></span>
-      <span class="h tl" id="threatlvl">HIVE MOOD —</span>
+      <span class="h">🐝 EPS <b id="eps">0</b></span><!--pop-->
+      <span class="h">🪤 BUSTS <b id="hthreats">0</b></span>
+      <span class="h">🐻 CROOKS <b id="hsources">0</b></span>
+      <span class="h">🪶 TRAPS <b id="hfeeds">--</b></span><!--t-->
+      <span class="h tl" id="threatlvl">STREET HEAT —</span>
       <span class="h clk" id="clock">--:--:--</span>
     </div>
   </div>
@@ -29,13 +29,13 @@
 <div class="ddosbar" id="ddosbar" hidden></div>
 
 <section class="strip">
-  <div class="chip"><b id="total">0</b> visitors</div>
-  <div class="chip crit"><b id="attacks">0</b> naughty</div>
-  <div class="chip"><b id="sources">0</b> burrows</div>
+  <div class="chip"><b id="total">0</b> passers-by</div>
+  <div class="chip crit"><b id="attacks">0</b> shady</div>
+  <div class="chip"><b id="sources">0</b> hideouts</div>
   <div class="chip"><b id="countries">0</b> countries</div>
-  <div class="chip"><b id="uptime">0s</b> awake</div>
+  <div class="chip"><b id="uptime">0s</b> open</div>
   <div class="stripsev">
-    <span class="sevlbl">MISCHIEF</span>
+    <span class="sevlbl">RAP SHEET</span>
     <div class="sevmix" id="sevmix">
       <div class="seg high" id="segHigh" title="high"></div>
       <div class="seg med"  id="segMed"  title="medium"></div>
@@ -50,7 +50,7 @@
   <!-- LEFT: map + console -->
   <div class="col colL">
     <div class="panel mappanel">
-      <div class="ph">🌍 where the bears come from <span class="hint" id="mapcount">0 sources</span>
+      <div class="ph">🌍 where the crooks hang out <span class="hint" id="mapcount">0 sources</span>
         <span class="viewtoggle"><button id="vGlobe" class="on">globe</button><button id="vMap">map</button></span></div>
       <div class="mapwrap">
         <canvas id="globe" class="globecv" aria-label="attack globe"></canvas>
@@ -62,7 +62,7 @@
       </div>
     </div>
     <div class="panel term-panel">
-      <div class="ph">🐝 hive log <span class="hint">the bees narrate</span></div>
+      <div class="ph">🐝 the ticker <span class="hint">live off the street</span></div>
       <div class="term" id="term" aria-live="polite"></div>
     </div>
   </div>
@@ -70,37 +70,37 @@
   <!-- CENTER: live feed -->
   <div class="col colC">
     <div class="panel feed">
-      <div class="ph">🍯 fresh drips — live feed <span class="hint">newest first</span></div>
-      <div class="rows" id="rows"><div class="empty">the jar is quiet… bears usually wander in within minutes of going public 🐾</div></div>
+      <div class="ph">🍯 fresh loot — live feed <span class="hint">newest first</span></div>
+      <div class="rows" id="rows"><div class="empty">the vault's quiet… crooks usually case the joint within minutes of going public 🕵️</div></div>
     </div>
     <div class="panel suri">
-      <div class="ph">🧚 tripwire fairies — IDS <span class="hint" id="suricount">0 alerts</span>
+      <div class="ph">🧚 the alarm system — IDS <span class="hint" id="suricount">0 alerts</span>
         <span class="suri-actions"><a href="/api/eve" download="eve.json">⬇ eve</a><a href="/lulz-honeypot.rules" download>⬇ rules</a></span></div>
-      <div class="everows" id="everows"><div class="empty">no tripwires tickled yet ✨</div></div>
+      <div class="everows" id="everows"><div class="empty">no alarms tripped yet 🔕</div></div>
     </div>
   </div>
 
   <!-- RIGHT: intel panels -->
   <div class="col colR">
     <div class="panel creds">
-      <div class="ph">🔑 passwords bears whispered <span class="hint" id="credcount">0</span></div>
-      <div class="credrows" id="credrows"><div class="empty">no secrets whispered — fake doors at /admin /router /webmail 🚪</div></div>
+      <div class="ph">🔑 keys they tried <span class="hint" id="credcount">0</span></div>
+      <div class="credrows" id="credrows"><div class="empty">nobody's jimmied a lock yet — fake doors at /admin /router /webmail 🚪</div></div>
     </div>
     <div class="panel c2">
-      <div class="ph">🐻‍❄️ bear dens — C2 / botnet <span class="hint" id="c2count">0</span></div>
-      <div class="c2rows" id="c2rows"><div class="empty">no dens discovered yet</div></div>
+      <div class="ph">🐻‍❄️ hideouts — C2 / botnet <span class="hint" id="c2count">0</span></div>
+      <div class="c2rows" id="c2rows"><div class="empty">no hideouts located yet</div></div>
     </div>
     <div class="panel prof">
-      <div class="ph">🐻 bear profiles <span class="hint" id="profcount">0</span>
+      <div class="ph">🐻 mugshots — crook profiles <span class="hint" id="profcount">0</span>
         <span class="suri-actions"><a href="/api/feed-export.csv" download="threatfeed.csv">⬇ csv</a><a href="/api/stix" download="iocs.stix.json">⬇ stix</a></span></div>
-      <div class="profrows" id="profrows"><div class="empty">sketching bear portraits…</div></div>
+      <div class="profrows" id="profrows"><div class="empty">taking mugshots…</div></div>
     </div>
     <div class="panel token">
-      <div class="ph">🫙 jam jars — honeytokens <span class="hint">canary bait</span></div>
-      <div class="tokrows" id="tokrows"><div class="empty">no jars opened — decoy jam in /.env &amp; /admin 🍓</div></div>
+      <div class="ph">🫙 marked bills — honeytokens <span class="hint">canary bait</span></div>
+      <div class="tokrows" id="tokrows"><div class="empty">no marked bills spent — decoy cash in /.env &amp; /admin 💵</div></div>
     </div>
     <div class="panel">
-      <div class="ph">🗺️ trap map <span class="hint">live decoys on this garden</span></div>
+      <div class="ph">🗺️ the board — trap map <span class="hint">every property is a decoy</span></div>
       <ul class="traps">
         <li><code>/.env</code> <code>/.aws</code> <code>/wp-config.php</code> <span>secret-file bait (canaried)</span></li>
         <li><code>/admin</code> <code>/router</code> <code>/webmail</code> <span>fake login doors</span></li>
@@ -117,36 +117,36 @@
       <ul class="toplist" id="geolist"><li class="empty">none yet</li></ul>
     </div>
     <div class="panel">
-      <div class="ph">⚔️ favorite tricks</div>
+      <div class="ph">⚔️ favorite heists</div>
       <ul class="toplist" id="toptypes"><li class="empty">none yet</li></ul>
     </div>
     <div class="panel">
-      <div class="ph">🧢 top disguises <span class="hint">user-agents</span></div>
+      <div class="ph">🧢 top disguises <span class="hint">aliases</span></div>
       <ul class="toplist" id="ualist"><li class="empty">none yet</li></ul>
     </div>
     <div class="panel">
-      <div class="ph">🌡 garden vitals</div>
+      <div class="ph">🌡 the joint's vitals</div>
       <ul class="procs">
         <li><span>[987]</span> sshd</li><li><span>[1142]</span> caddy</li>
         <li><span>[1190]</span> honeyd</li><li><span>[1245]</span> cowrie</li>
       </ul>
       <div class="meters">
-        <div class="meter"><label>sunshine</label><div class="mbar"><i id="mload"></i></div><span class="mv" id="vload">0.00</span></div>
-        <div class="meter"><label>honey</label><div class="mbar"><i id="mmem"></i></div><span class="mv" id="vmem">--</span></div>
-        <div class="meter"><label>breeze</label><div class="mbar"><i id="mnet"></i></div><span class="mv" id="vnet">--</span></div>
+        <div class="meter"><label>hustle</label><div class="mbar"><i id="mload"></i></div><span class="mv" id="vload">0.00</span></div>
+        <div class="meter"><label>vault</label><div class="mbar"><i id="mmem"></i></div><span class="mv" id="vmem">--</span></div>
+        <div class="meter"><label>wire</label><div class="mbar"><i id="mnet"></i></div><span class="mv" id="vnet">--</span></div>
       </div>
     </div>
     <div class="panel">
-      <div class="ph">❓ what is this place?</div>
+      <div class="ph">❓ what is this joint?</div>
       <div class="about">
-        <p>This is a <b>honeypot</b> — a decoy server dressed up as an easy target.
-        Every visit you see here is a <b>real</b> probe from the public internet:
-        bots and attackers scanning for weak sites to break into.</p>
-        <p>The traps hand out <b>fake secrets</b> (canary tokens). If a bear ever
-        <i>uses</i> one, we get an alarm. Meanwhile every paw print is logged,
-        geo-located, and enriched into attacker profiles you can export
+        <p>This is a <b>honeypot</b> — a decoy server dolled up like an easy mark.
+        Every visit you see here is a <b>real</b> probe from the open internet:
+        bots and crooks casing the block for a weak door to jimmy.</p>
+        <p>The traps hand out <b>marked bills</b> (canary tokens). If a crook ever
+        <i>spends</i> one, the alarm rings. Meanwhile every fingerprint is booked,
+        geo-located, and worked up into mugshots you can export
         (CSV / STIX / Suricata EVE) for firewalls and SIEMs.</p>
-        <p class="tiny">Nothing here is real. Except the bears. The bears are very real. 🐻</p>
+        <p class="tiny">Do not pass Go. Do not collect $200. 🎩💰</p>
       </div>
     </div>
   </div>

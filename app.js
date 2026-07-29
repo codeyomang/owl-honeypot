@@ -21,8 +21,8 @@
   let misses = 0;
   function setLive(on){
     const el = $("#live"); if(!el) return;
-    if(on){ el.textContent = "● LIVE"; el.style.color = "var(--berry)"; el.style.animation = "blink 1.4s infinite"; }
-    else  { el.textContent = "● RECONNECTING…"; el.style.color = "var(--honey)"; el.style.animation = "none"; }
+    if(on){ el.textContent = "● LIVE"; el.style.background = "var(--pop-pink)"; el.style.color = "#fff"; el.style.animation = "blink 1.4s infinite"; }
+    else  { el.textContent = "● RECONNECTING…"; el.style.background = "var(--pop-orange)"; el.style.color = "#111"; el.style.animation = "none"; }
   }
   async function poll() {
     try {
@@ -55,10 +55,10 @@
     // threat level from recent high-sev volume
     const sv = st.sev || { high: 0, med: 0, low: 0 };
     const tl = $("#threatlvl");
-    let lvl = "CALM", cls = "";
-    if (sv.high >= 5 || st.eps > 3) { lvl = "SWARMING"; cls = "high"; }
-    else if (sv.high >= 1 || sv.med >= 3) { lvl = "ABUZZ"; cls = "elevated"; }
-    tl.textContent = "HIVE MOOD " + lvl;
+    let lvl = "COOL", cls = "";
+    if (sv.high >= 5 || st.eps > 3) { lvl = "BLAZING"; cls = "high"; }
+    else if (sv.high >= 1 || sv.med >= 3) { lvl = "RISING"; cls = "elevated"; }
+    tl.textContent = "STREET HEAT " + lvl;
     tl.className = "h tl " + cls;
 
     // --- severity mix bar ---
@@ -78,7 +78,7 @@
       } else {
         bar.hidden = false;
         bar.className = "ddosbar " + dd.level;
-        const icon = dd.level === "under_attack" ? "🚨 BEAR STAMPEDE" : "⚠ THE GARDEN IS BUSY";
+        const icon = dd.level === "under_attack" ? "🚨 HEIST IN PROGRESS" : "⚠ THE JOINT IS BUSY";
         bar.textContent = `${icon} — ${dd.note || (dd.eps + " req/s")}`;
       }
     }
@@ -93,7 +93,7 @@
     const tk = d.honeytokens || [];
     $("#tokrows").innerHTML = tk.length
       ? tk.map(h => `<div class="tokhit">🚨 <b>${esc(h.token)}</b> replayed by ${flag(h.cc)} ${esc(h.ip)} <span class="tm">${esc(h.t)}</span></div>`).join("")
-      : '<div class="empty">no jars opened — decoy jam in /.env &amp; /admin 🍓</div>';
+      : '<div class="empty">no marked bills spent — decoy cash in /.env &amp; /admin 💵</div>';
 
     // captured credentials panel
     const cr = d.creds || [];
@@ -102,7 +102,7 @@
       ? cr.map(c => `<div class="credrow"><span class="portal">${esc(c.portal)}</span>`
           + `<span class="who">${esc(c.user||"(blank)")}</span> / <span class="pw">${esc(c.pass||"(blank)")}</span>`
           + `<span class="meta">${flag(c.cc)} ${esc(c.ip)} · ${esc(c.t)}</span></div>`).join("")
-      : '<div class="empty">no secrets whispered — fake doors at /admin /router /webmail 🚪</div>';
+      : '<div class="empty">nobody\'s jimmied a lock yet — fake doors at /admin /router /webmail 🚪</div>';
 
     // C2 / IOC panel
     const c2 = d.c2 || [];
@@ -117,7 +117,7 @@
             + (flags?`<div class="ti badhost">⚠ ${esc(flags)}</div>`:"")
             + `<div class="ti">from ${flag("")}${esc(x.src)} · ${esc(x.t)}</div></div>`;
         }).join("")
-      : '<div class="empty">no dens discovered yet</div>';
+      : '<div class="empty">no hideouts located yet</div>';
 
     // attacker profiles panel (enriched OSINT)
     const pf = d.profiles || [];
@@ -137,11 +137,11 @@
             + `<div class="pmeta">${esc(e.country||"?")} · ${esc(asn)} ${e.rdns?("· "+esc(e.rdns)):""}</div>`
             + `<div>${tags.join("")}</div></div>`;
         }).join("")
-      : '<div class="empty">sketching bear portraits…</div>';
+      : '<div class="empty">taking mugshots…</div>';
 
     const rows = $("#rows");
     if (!d.hits.length) {
-      rows.innerHTML = '<div class="empty">the jar is quiet… bears usually wander in within minutes of going public 🐾</div>';
+      rows.innerHTML = '<div class="empty">the vault\'s quiet… crooks usually case the joint within minutes of going public 🕵️</div>';
     } else {
       rows.innerHTML = d.hits.map(h => `
         <div class="row ${sevClass(h)}">
@@ -178,72 +178,83 @@
             <div class="cat">${esc(a.category)} · ${esc(e.src_ip)} · ${esc(e.http.http_method)} ${esc(e.http.url)}</div>
           </div>`;
         }).join("")
-      : '<div class="empty">no tripwires tickled yet ✨</div>';
+      : '<div class="empty">no alarms tripped yet 🔕</div>';
     const ct = d.classtypes || [];
     if ($("#classtypes")) $("#classtypes").innerHTML = ct.length
       ? ct.map(([k, v]) => `<li>${esc(k)} <b>${v}</b></li>`).join("")
       : '<li class="empty">none yet</li>';
   }
 
-  // --- whimsy layer 1: drifting clouds + falling petals ---
+  // --- pop-art layer 1: Warhol color-quadrant wash + graffiti paint drips ---
   const cv = $("#clouds"), ctx = cv && cv.getContext("2d");
-  let W, H, clouds = [], petals = [];
+  const POP = ["#ff3ea5","#00c2c7","#ffd400","#ff6a00","#7b2ff7","#1f6dff","#2ecc40"];
+  let W, H, drips = [];
+  function newDrip(){
+    return { x:Math.random()*W, y:-20, len:0, max:40+Math.random()*180,
+      w:5+Math.random()*10, v:0.6+Math.random()*1.4,
+      col:POP[Math.floor(Math.random()*POP.length)], blob:false };
+  }
   function resize(){
     if(!cv) return;
     W=cv.width=innerWidth; H=cv.height=innerHeight;
-    clouds = Array.from({length:5},()=>({x:Math.random()*W, y:Math.random()*H*0.35,
-      r:40+Math.random()*60, v:0.08+Math.random()*0.15}));
-    petals = Array.from({length:14},()=>({x:Math.random()*W, y:Math.random()*H,
-      v:0.25+Math.random()*0.5, sway:Math.random()*6.28, size:3+Math.random()*4,
-      hue:["#f6c2d0","#fdeec9","#dcebfb","#e2f3e4"][Math.floor(Math.random()*4)]}));
+    drips = Array.from({length:10}, newDrip);
   }
   function draw(){
     if(!ctx) return;
     ctx.clearRect(0,0,W,H);
-    clouds.forEach(c=>{
-      ctx.fillStyle="rgba(255,255,255,.5)";
-      for(const [dx,dy,dr] of [[0,0,1],[-c.r*.6,c.r*.15,.7],[c.r*.6,c.r*.18,.75]]){
-        ctx.beginPath(); ctx.arc(c.x+dx,c.y+dy,c.r*dr,0,7); ctx.fill();
-      }
-      c.x+=c.v; if(c.x-c.r*2>W) c.x=-c.r*2;
+    // faint Warhol 2x2 color-block wash in the corners (silkscreen tint)
+    ctx.globalAlpha=0.06;
+    const bw=W/2, bh=H/2, quad=["#ff3ea5","#00c2c7","#ffd400","#7b2ff7"];
+    ctx.fillStyle=quad[0]; ctx.fillRect(0,0,bw,bh);
+    ctx.fillStyle=quad[1]; ctx.fillRect(bw,0,bw,bh);
+    ctx.fillStyle=quad[2]; ctx.fillRect(0,bh,bw,bh);
+    ctx.fillStyle=quad[3]; ctx.fillRect(bw,bh,bw,bh);
+    ctx.globalAlpha=1;
+    // spray-paint drips creeping down from the top edge (graffiti)
+    ctx.globalAlpha=0.5;
+    drips.forEach((d,i)=>{
+      if(d.len<d.max) d.len+=d.v;
+      ctx.strokeStyle=d.col; ctx.lineWidth=d.w; ctx.lineCap="round";
+      ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x,d.y+d.len); ctx.stroke();
+      // paint blob at the tip
+      ctx.fillStyle=d.col; ctx.beginPath();
+      ctx.arc(d.x,d.y+d.len,d.w*0.75,0,7); ctx.fill();
+      if(d.len>=d.max && Math.random()>0.992) drips[i]=newDrip();
     });
-    petals.forEach(p=>{
-      p.sway+=0.02; p.y+=p.v; p.x+=Math.sin(p.sway)*0.4;
-      if(p.y>H+8){p.y=-8;p.x=Math.random()*W;}
-      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(Math.sin(p.sway)*0.9);
-      ctx.fillStyle=p.hue; ctx.beginPath();
-      ctx.ellipse(0,0,p.size,p.size*0.55,0,0,7); ctx.fill(); ctx.restore();
-    });
+    ctx.globalAlpha=1;
     requestAnimationFrame(draw);
   }
   if(cv){ addEventListener("resize",resize); resize(); draw(); }
 
-  // --- whimsy layer 2: wandering bees ---
+  // --- pop-art layer 2: floating top-hats, monocles & flying cash (Alec Monopoly) ---
   const mx = $("#bees"), mctx = mx && mx.getContext("2d");
-  let bees = [], MW, MH;
+  const ICONS = ["🎩","💰","💵","🪙","💸","🖋️"];
+  let props = [], MW, MH;
   function mresize(){
     if(!mx) return;
     MW=mx.width=innerWidth; MH=mx.height=innerHeight;
-    bees = Array.from({length:6},()=>({x:Math.random()*MW, y:Math.random()*MH,
-      a:Math.random()*6.28, v:0.6+Math.random()*0.7, wob:Math.random()*6.28}));
+    props = Array.from({length:7},()=>({x:Math.random()*MW, y:Math.random()*MH,
+      a:Math.random()*6.28, v:0.5+Math.random()*0.8, wob:Math.random()*6.28,
+      spin:(Math.random()-0.5)*0.04, rot:Math.random()*6.28,
+      icon:ICONS[Math.floor(Math.random()*ICONS.length)], size:20+Math.random()*10}));
   }
-  function buzz(){
+  function fly(){
     if(!mctx) return;
     mctx.clearRect(0,0,MW,MH);
-    mctx.font="16px serif"; mctx.globalAlpha=0.8;
-    bees.forEach(b=>{
-      b.wob+=0.15; b.a+=(Math.random()-0.5)*0.2;
-      b.x+=Math.cos(b.a)*b.v; b.y+=Math.sin(b.a)*b.v+Math.sin(b.wob)*0.6;
-      if(b.x<-20)b.x=MW+18; if(b.x>MW+20)b.x=-18;
-      if(b.y<-20)b.y=MH+18; if(b.y>MH+20)b.y=-18;
-      mctx.save(); mctx.translate(b.x,b.y);
-      if(Math.cos(b.a)<0) mctx.scale(-1,1);
-      mctx.fillText("🐝",-8,6); mctx.restore();
+    mctx.globalAlpha=0.85;
+    props.forEach(p=>{
+      p.wob+=0.05; p.a+=(Math.random()-0.5)*0.06; p.rot+=p.spin;
+      p.x+=Math.cos(p.a)*p.v; p.y+=Math.sin(p.a)*p.v*0.6+Math.sin(p.wob)*0.5;
+      if(p.x<-30)p.x=MW+26; if(p.x>MW+30)p.x=-26;
+      if(p.y<-30)p.y=MH+26; if(p.y>MH+30)p.y=-26;
+      mctx.save(); mctx.translate(p.x,p.y); mctx.rotate(Math.sin(p.rot)*0.4);
+      mctx.font=p.size+"px serif"; mctx.fillText(p.icon,-p.size/2,p.size/3);
+      mctx.restore();
     });
     mctx.globalAlpha=1;
-    requestAnimationFrame(buzz);
+    requestAnimationFrame(fly);
   }
-  if(mx){ addEventListener("resize",mresize); mresize(); buzz(); }
+  if(mx){ addEventListener("resize",mresize); mresize(); fly(); }
 
   // --- system HUD meters (cosmetic, GatesOS vibe) ---
   function meters(){
@@ -259,18 +270,18 @@
   // --- auto-typing console: types real honeypot events (GatesOS 5th element) ---
   const term = $("#term");
   const boot = [
-    { c:"p",  s:"$ ./tend --garden" },
-    { c:"",   s:"[ok] honey jars set out on the porch :80 :443" },
-    { c:"",   s:"[ok] ssh trap humming · telnet twine tied · vnc window cracked" },
-    { c:"",   s:"[ok] jam jars canaried · tripwire fairies awake" },
-    { c:"am", s:"[..] waiting for bears…" },
+    { c:"p",  s:"$ ./open --for-business" },
+    { c:"",   s:"[ok] fake storefront lit up on :80 :443 — 'easy money inside'" },
+    { c:"",   s:"[ok] ssh backdoor propped · telnet window cracked · vnc blinds open" },
+    { c:"",   s:"[ok] marked bills planted · alarm system armed 🚨" },
+    { c:"am", s:"[..] waiting for crooks to case the joint…" },
   ];
   let termLines = [], seen = new Set(), typing = false, bootDone = false, bootIdx = 0;
 
   function eventLine(h){
     if (h.ip === "127.0.0.1") return null;              // skip local self-tests
     const cls = h.attack ? (h.sev === "high" ? "hi" : "am") : "";
-    const mark = h.attack ? (h.sev === "high" ? "[snap!]" : "[sniff]") : "[step]";
+    const mark = h.attack ? (h.sev === "high" ? "[BUST!]" : "[casing]") : "[peek]";
     return { c: cls, s: `${mark} ${h.ip} ${h.method} ${h.path} — ${h.label}` };
   }
   function key(h){ return h.t + h.ip + h.path; }
@@ -405,10 +416,10 @@
     gx.clearRect(0,0,gW,gH);
     gx.save(); gx.translate(gW/2,gH/2);
     // limb glow
-    gx.beginPath(); gx.arc(0,0,gR,0,7); gx.strokeStyle="rgba(217,142,4,.45)"; gx.lineWidth=1.2; gx.stroke();
-    gx.fillStyle="rgba(242,193,78,.06)"; gx.fill();
+    gx.beginPath(); gx.arc(0,0,gR,0,7); gx.strokeStyle="#111"; gx.lineWidth=2.5; gx.stroke();
+    gx.fillStyle="rgba(255,212,0,.14)"; gx.fill();
     // graticule: latitude rings
-    gx.strokeStyle="rgba(217,142,4,.18)"; gx.lineWidth=.7;
+    gx.strokeStyle="rgba(123,47,247,.30)"; gx.lineWidth=.8;
     for(let la=-60; la<=60; la+=30){
       gx.beginPath(); let first=true;
       for(let lo=-180; lo<=180; lo+=6){
@@ -431,7 +442,7 @@
     activePts.forEach(pt=>{
       const p=project(pt.lat,pt.lng,gR);
       const back = p.z < 0;                    // far hemisphere
-      const col = pt.hi ? "#d9486a" : "#d98e04";
+      const col = pt.hi ? "#ff6a00" : "#ff3ea5";
       if(back){
         // faint static dot on the back, no ping
         gx.beginPath(); gx.arc(p.x,p.y,Math.min(1.5+pt.n*0.25,3.5),0,7);
