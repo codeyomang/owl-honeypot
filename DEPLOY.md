@@ -128,6 +128,21 @@ sudo ufw allow 21,23,25,3306,3389,5900,6379,11211,27017/tcp comment 'lulz tcp ho
 > is simplest — it's a trap, nothing sensitive is on it.
 > ⚠️ Make sure none of these ports collide with a real service you use.
 
+## Editing the dashboard JS (obfuscated build)
+The served `app.js` is a **minified + name-mangled** build. Edit the readable
+source `app.src.js`, then rebuild:
+```bash
+./build.sh            # app.src.js -> app.js  (needs Node/npx; uses terser)
+```
+Commit **both** files. If you deploy via `git pull`, the built `app.js` is
+already in the repo, so the server needs nothing extra.
+
+> ⚠️ Reality check: client-side JS can't be truly hidden or "encrypted" — the
+> browser must download and run it, so anyone can read it with enough effort.
+> Minify/mangle only *raises the bar* against casual copying. Your real value
+> (detection engine, canary logic) lives in `server.py`, which never leaves
+> the box. Don't put secrets in front-end code.
+
 ## Feeding real Suricata (optional)
 `lulz-honeypot.rules` is valid Suricata syntax — load it on a real Suricata
 sensor to get the same detections at the packet level.
