@@ -187,7 +187,7 @@
 
   // --- pop-art layer 1: Warhol color-quadrant wash + graffiti paint drips ---
   const cv = $("#clouds"), ctx = cv && cv.getContext("2d");
-  const POP = ["#e0709f","#5bb3b6","#e8c766","#df8a52","#8f78c4","#5f86c9","#6aa96f"];
+  const POP = ["#ff5fae","#33d6da","#f5cf4a","#ff7a3c","#a684f0","#5b9bff","#57d977"];
   let W, H, drips = [];
   function newDrip(){
     return { x:Math.random()*W, y:-20, len:0, max:40+Math.random()*160,
@@ -203,17 +203,18 @@
     if(!ctx) return;
     ctx.clearRect(0,0,W,H);
     // faint Warhol 2x2 color-block wash in the corners (silkscreen tint)
-    ctx.globalAlpha=0.035;
-    const bw=W/2, bh=H/2, quad=["#e0709f","#5bb3b6","#e8c766","#8f78c4"];
+    ctx.globalAlpha=0.06;
+    const bw=W/2, bh=H/2, quad=["#ff5fae","#33d6da","#f5cf4a","#a684f0"];
     ctx.fillStyle=quad[0]; ctx.fillRect(0,0,bw,bh);
     ctx.fillStyle=quad[1]; ctx.fillRect(bw,0,bw,bh);
     ctx.fillStyle=quad[2]; ctx.fillRect(0,bh,bw,bh);
     ctx.fillStyle=quad[3]; ctx.fillRect(bw,bh,bw,bh);
     ctx.globalAlpha=1;
-    // spray-paint drips creeping down from the top edge (graffiti)
-    ctx.globalAlpha=0.32;
+    // spray-paint drips creeping down from the top edge (neon graffiti)
+    ctx.globalAlpha=0.42;
     drips.forEach((d,i)=>{
       if(d.len<d.max) d.len+=d.v;
+      ctx.shadowColor=d.col; ctx.shadowBlur=10;
       ctx.strokeStyle=d.col; ctx.lineWidth=d.w; ctx.lineCap="round";
       ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x,d.y+d.len); ctx.stroke();
       // paint blob at the tip
@@ -221,7 +222,7 @@
       ctx.arc(d.x,d.y+d.len,d.w*0.75,0,7); ctx.fill();
       if(d.len>=d.max && Math.random()>0.992) drips[i]=newDrip();
     });
-    ctx.globalAlpha=1;
+    ctx.shadowBlur=0; ctx.globalAlpha=1;
     requestAnimationFrame(draw);
   }
   if(cv){ addEventListener("resize",resize); resize(); draw(); }
@@ -523,7 +524,7 @@
     }
 
     // hand-drawn parts (all relative to canvas w/h, ink outline)
-    function ink(w){ tx.strokeStyle="#1c1c1c"; tx.lineWidth=w||2.5; tx.lineJoin="round"; tx.lineCap="round"; }
+    function ink(w){ tx.strokeStyle="#0a0a0a"; tx.lineWidth=w||2.5; tx.lineJoin="round"; tx.lineCap="round"; }
     function drawCheese(w,h){
       const x=w*0.68, y=h*0.78;
       tx.fillStyle="#e8c766"; ink(2.5);
@@ -570,8 +571,9 @@
     function frame(){
       const w = tc.clientWidth || 300, h = 120;
       tx.clearRect(0,0,w,h);
-      // ground line
-      ink(2); tx.beginPath(); tx.moveTo(8,h-14); tx.lineTo(w-8,h-14); tx.stroke();
+      // ground line (glowing green like the console)
+      tx.strokeStyle="#57d977"; tx.lineWidth=2; tx.globalAlpha=.55;
+      tx.beginPath(); tx.moveTo(8,h-14); tx.lineTo(w-8,h-14); tx.stroke(); tx.globalAlpha=1;
       drawCheese(w,h);
       const groundY = h-22;
       const cheeseX = w*0.68;
